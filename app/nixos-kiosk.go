@@ -1,0 +1,154 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/ibizaman/nixos-kiosk/networkmanager"
+	"github.com/urfave/cli/v3"
+)
+
+func main() {
+	cmd := &cli.Command{
+		Usage: "Manage a NixOS Kiosk",
+		Commands: []*cli.Command{
+			{
+				Name:    "network-manager",
+				Aliases: []string{"nm"},
+				Usage:   "Run queries against NetworkManager over DBUS",
+				Commands: []*cli.Command{
+					{
+						Name:    "status",
+						Aliases: []string{"d"},
+						Usage:   "show network manager status",
+						Action:  networkManagerStatus,
+					},
+					{
+						Name:    "profiles",
+						Aliases: []string{"p"},
+						Usage:   "list saved profiles",
+						Action:  networkManagerProfiles,
+					},
+					{
+						Name:    "connect",
+						Aliases: []string{"c"},
+						Usage:   "connect using a saved profiles",
+						Arguments: []cli.Argument{
+							&cli.StringArg{
+								Name: "profile",
+							},
+						},
+						Action: networkManagerConnect,
+					},
+					{
+						Name:    "add",
+						Aliases: []string{"a"},
+						Usage:   "connect to an SSID. Reads PSK from NIXOS_KIOSK_PSK env var.",
+						Arguments: []cli.Argument{
+							&cli.StringArg{
+								Name: "SSID",
+							},
+						},
+						Action: networkManagerAdd,
+					},
+				},
+			},
+		},
+	}
+
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func networkManagerStatus(ctx context.Context, cmd *cli.Command) error {
+	c, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	info, err := c.NetworkInfo()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	infoStr, err := json.Marshal(info)
+	if err != nil {
+		log.Fatalf("cannot marshal info: %s", err)
+	}
+	fmt.Printf("%s", string(infoStr))
+	return nil
+}
+
+func networkManagerProfiles(ctx context.Context, cmd *cli.Command) error {
+	c, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	conns, err := c.ListSavedConnections()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	connsStr, err := json.Marshal(conns)
+	if err != nil {
+		log.Fatalf("cannot marshal info: %s", err)
+	}
+	fmt.Printf("%s", string(connsStr))
+	return nil
+}
+
+func networkManagerConnect(ctx context.Context, cmd *cli.Command) error {
+	profile := cmd.StringArg("profile")
+
+	c, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	res, err := c.Connect(profile, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resStr, err := json.Marshal(res)
+	if err != nil {
+		log.Fatalf("cannot marshal result: %s", err)
+	}
+	fmt.Printf("%s", string(resStr))
+	return nil
+}
+
+func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
+	ssid := cmd.StringArg("SSID")
+
+	password := os.Getenv("NIXOS_KIOSK_PSK")
+	if password == "" {
+		log.Fatalf("No password given with NIXOS_KIOSK_PSK env var")
+	}
+
+	c, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	res, err := c.ConnectWifi(ssid, password, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resStr, err := json.Marshal(res)
+	if err != nil {
+		log.Fatalf("cannot marshal result: %s", err)
+	}
+	fmt.Printf("%s", string(resStr))
+	return nil
+}

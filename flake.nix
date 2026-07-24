@@ -46,6 +46,14 @@
           }:
           {
             formatter = pkgs.nixfmt-tree;
+
+            packages.nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
+
+            checks = {
+              app-networkmanager = pkgs.callPackage ./app/tests/networkmanager.nix {
+                inherit (self'.packages) nixos-kiosk;
+              };
+            };
           };
 
         flake = {
@@ -86,8 +94,14 @@
             };
             rpi-hdmi = {
               hardware.raspberry-pi.config.all.options = {
-                hdmi_force_hotplug = { enable = true; value = 1; };
-                hdmi_drive = { enable = true; value = 2; };
+                hdmi_force_hotplug = {
+                  enable = true;
+                  value = 1;
+                };
+                hdmi_drive = {
+                  enable = true;
+                  value = 2;
+                };
               };
             };
             common =
@@ -168,8 +182,10 @@
             };
           };
 
-          sdImages.nixos-kiosk-rpi2 = self.nixosConfigurations.nixos-kiosk-rpi2-image.config.system.build.sdImage;
-          sdImages.nixos-kiosk-rpi3 = self.nixosConfigurations.nixos-kiosk-rpi3-image.config.system.build.sdImage;
+          sdImages.nixos-kiosk-rpi2 =
+            self.nixosConfigurations.nixos-kiosk-rpi2-image.config.system.build.sdImage;
+          sdImages.nixos-kiosk-rpi3 =
+            self.nixosConfigurations.nixos-kiosk-rpi3-image.config.system.build.sdImage;
         };
       };
 }
