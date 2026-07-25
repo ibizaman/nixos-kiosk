@@ -271,6 +271,63 @@ func (c *Client) Disconnect(activeConnectionPath string) error {
 	return nil
 }
 
+// CreateAP creates or updates a WiFi access poinrt profile
+func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (dbus.ObjectPath, error) {
+	settings := map[string]map[string]dbus.Variant{
+		"connection": {
+			"id":          dbus.MakeVariant(id),
+			"type":        dbus.MakeVariant("802-11-wireless"),
+			"autoconnect": dbus.MakeVariant(false),
+		},
+		"802-11-wireless": {
+			"mode": dbus.MakeVariant("ap"),
+			"ssid": dbus.MakeVariant([]byte(ssid)),
+		},
+		"802-11-wireless-security": {
+			"key-mgmt": dbus.MakeVariant("wpa-psk"),
+			"psk":      dbus.MakeVariant(psk),
+		},
+		"ipv4": {
+			"method": dbus.MakeVariant("shared"),
+		},
+		"ipv6": {
+			"method": dbus.MakeVariant("disabled"),
+		},
+	}
+
+	var found *SavedConnection
+	if saved, err := c.ListSavedConnections(); err != nil {
+		return "", fmt.Errorf("network: could not list existing profiles: %w", err)
+	} else {
+		for _, s := range saved {
+			if s.ID == id {
+				found = &s
+			}
+		}
+	}
+
+	if found != nil {
+		connObj := c.obj(dbus.ObjectPath(found.Path))
+		err := connObj.Call(
+			nmConnIface+".Update", 0, settings,
+		).Err
+		if err != nil {
+			return "", fmt.Errorf("network: could not update access point: %w", err)
+		}
+		return dbus.ObjectPath(found.Path), nil
+	} else {
+		iface := nmSettingsIface + ".AddConnection"
+
+		var path dbus.ObjectPath
+		if err := c.obj(nmSettingsPath).Call(
+			iface, 0, settings,
+		).Store(&path); err != nil {
+			return "", fmt.Errorf("network: could not create access point: %w", err)
+		}
+		return path, nil
+	}
+}
+
 // internal helpers
 
 func (c *Client) obj(path dbus.ObjectPath) dbus.BusObject {
