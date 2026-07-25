@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/ibizaman/nixos-kiosk/networkmanager"
 	"github.com/urfave/cli/v3"
@@ -46,13 +47,41 @@ func main() {
 					{
 						Name:    "add",
 						Aliases: []string{"a"},
-						Usage:   "connect to an SSID. Reads PSK from NIXOS_KIOSK_PSK env var.",
+						Usage:   "connect to an SSID. Reads PSK from NIXOS_KIOSK_PSK env var or the file given in the --psk-file argument.",
 						Arguments: []cli.Argument{
 							&cli.StringArg{
 								Name: "SSID",
 							},
 						},
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "psk-file",
+								Aliases: []string{"f"},
+								Usage:   "filename where the PSK is stored",
+							},
+						},
 						Action: networkManagerAdd,
+					},
+					{
+						Name:    "addAP",
+						Aliases: []string{"ap"},
+						Usage:   "Create or update an Access Point. Reads PSK from NIXOS_KIOSK_PSK env var or the file given in the --psk-file argument.",
+						Arguments: []cli.Argument{
+							&cli.StringArg{
+								Name: "id",
+							},
+							&cli.StringArg{
+								Name: "SSID",
+							},
+						},
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "psk-file",
+								Aliases: []string{"f"},
+								Usage:   "filename where the PSK is stored",
+							},
+						},
+						Action: networkManagerAddAP,
 					},
 				},
 			},
@@ -128,11 +157,7 @@ func networkManagerConnect(ctx context.Context, cmd *cli.Command) error {
 
 func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
-
-	password := os.Getenv("NIXOS_KIOSK_PSK")
-	if password == "" {
-		log.Fatalf("No password given with NIXOS_KIOSK_PSK env var")
-	}
+	password := readPassword(cmd)
 
 	c, err := networkmanager.NewClient()
 	if err != nil {
@@ -151,4 +176,45 @@ func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 	}
 	fmt.Printf("%s", string(resStr))
 	return nil
+}
+
+func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
+	id := cmd.StringArg("id")
+	ssid := cmd.StringArg("SSID")
+	password := readPassword(cmd)
+
+	c, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	res, err := c.CreateOrUpdateAP(id, ssid, password)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resStr, err := json.Marshal(res)
+	if err != nil {
+		log.Fatalf("cannot marshal result: %s", err)
+	}
+	fmt.Printf("%s", string(resStr))
+	return nil
+}
+
+func readPassword(cmd *cli.Command) string {
+	var password string
+	if psk_file := cmd.String("psk-file"); psk_file != "" {
+		p, err := os.ReadFile(psk_file)
+		if err != nil {
+			log.Fatalf("Could not read psk-file: %s", err)
+		}
+		password = strings.TrimSpace(string(p))
+	} else {
+		password = os.Getenv("NIXOS_KIOSK_PSK")
+	}
+	if password == "" {
+		log.Fatalf("No password given with NIXOS_KIOSK_PSK env var or --psk-file")
+	}
+	return password
 }
