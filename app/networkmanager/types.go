@@ -24,6 +24,16 @@ const (
 	NMDeviceTypeLoopback NMDeviceType = 14
 )
 
+type NMActiveConnectionState uint32
+
+const (
+	NMActiveConnectionStateUnknown      NMActiveConnectionState = 0
+	NMActiveConnectionStateActivating   NMActiveConnectionState = 1
+	NMActiveConnectionStateActivated    NMActiveConnectionState = 2
+	NMActiveConnectionStateDeactivating NMActiveConnectionState = 3
+	NMActiveConnectionStateDeactivated  NMActiveConnectionState = 4
+)
+
 // NetworkDevice is a snapshot of a single NM device.
 type NetworkDevice struct {
 	Path      string       `json:"path"`
@@ -46,11 +56,12 @@ type AccessPoint struct {
 
 // ActiveConnection is a snapshot of one active NM connection.
 type ActiveConnection struct {
-	Path    string `json:"path"`
-	ID      string `json:"id"`
-	UUID    string `json:"uuid"`
-	State   uint32 `json:"state"`
-	Default bool   `json:"default"` // true when this is the default IPv4 route
+	Path      string `json:"path"`
+	ID        string `json:"id"`
+	UUID      string `json:"uuid"`
+	State     uint32 `json:"state"`
+	StateName string `json:"stateName"`
+	Default   bool   `json:"default"` // true when this is the default IPv4 route
 }
 
 // SavedConnection is a connection profile stored in NM Settings.

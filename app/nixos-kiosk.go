@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ibizaman/nixos-kiosk/networkmanager"
+	"github.com/ibizaman/nixos-kiosk/web"
 	"github.com/urfave/cli/v3"
 )
 
@@ -23,7 +26,7 @@ func main() {
 				Commands: []*cli.Command{
 					{
 						Name:    "status",
-						Aliases: []string{"d"},
+						Aliases: []string{"s"},
 						Usage:   "show network manager status",
 						Action:  networkManagerStatus,
 					},
@@ -50,7 +53,8 @@ func main() {
 						Usage:   "connect to an SSID. Reads PSK from NIXOS_KIOSK_PSK env var or the file given in the --psk-file argument.",
 						Arguments: []cli.Argument{
 							&cli.StringArg{
-								Name: "SSID",
+								Name:  "SSID",
+								Value: "Kiosk Setup",
 							},
 						},
 						Flags: []cli.Flag{
@@ -71,7 +75,8 @@ func main() {
 								Name: "id",
 							},
 							&cli.StringArg{
-								Name: "SSID",
+								Name:  "SSID",
+								Value: "Kiosk Setup",
 							},
 						},
 						Flags: []cli.Flag{
@@ -84,6 +89,26 @@ func main() {
 						Action: networkManagerAddAP,
 					},
 				},
+			},
+			{
+				Name:    "serve",
+				Aliases: []string{"s"},
+				Usage:   "Serve web pages",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name:  "SSID",
+						Value: "Kiosk Setup",
+					},
+				},
+				Flags: []cli.Flag{
+					&cli.Int16Flag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Usage:   "port on which to listen to",
+						Value:   8000,
+					},
+				},
+				Action: serve,
 			},
 		},
 	}
@@ -142,16 +167,20 @@ func networkManagerConnect(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer c.Close()
 
-	res, err := c.Connect(profile, "")
+	res, err := c.Connect(profile)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	resStr, err := json.Marshal(res)
+	resStr, err := json.Marshal(res.ActiveConnectionPath)
 	if err != nil {
 		log.Fatalf("cannot marshal result: %s", err)
 	}
-	fmt.Printf("%s", string(resStr))
+
+	state, err := c.WaitWhileConnecting(res.ActiveConnectionPath, 30*time.Second)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s: %s", string(resStr), state)
 	return nil
 }
 
@@ -165,7 +194,7 @@ func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer c.Close()
 
-	res, err := c.ConnectWifi(ssid, password, "")
+	res, err := c.CreateWifi(ssid, ssid, password)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -217,4 +246,33 @@ func readPassword(cmd *cli.Command) string {
 		log.Fatalf("No password given with NIXOS_KIOSK_PSK env var or --psk-file")
 	}
 	return password
+}
+
+func serve(ctx context.Context, cmd *cli.Command) error {
+	ssid := cmd.StringArg("SSID")
+	port := cmd.Int16("port")
+	addr := fmt.Sprintf("0.0.0.0:%d", port)
+	password := genPassword()
+
+	n, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatalf("could not initialize network manager: %s", err)
+	}
+	defer n.Close()
+
+	return web.Start(n, addr, ssid, password)
+}
+
+var letters = []rune("123456789")
+
+func genPassword() string {
+	b := make([]rune, 9)
+	for i := range 4 {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	b[4] = '-'
+	for i := range 4 {
+		b[i+5] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
