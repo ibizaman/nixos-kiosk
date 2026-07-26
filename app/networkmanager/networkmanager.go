@@ -2,6 +2,7 @@ package networkmanager
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -147,6 +148,14 @@ func (c *Client) ActiveConnections() ([]ActiveConnection, error) {
 	return out, nil
 }
 
+func (c *Client) GetActiveConnection(path dbus.ObjectPath) (ActiveConnection, error) {
+	ac, err := c.readActiveConn(path)
+	if err != nil {
+		return ActiveConnection{}, err
+	}
+	return ac, nil
+}
+
 // AccessPoints returns deduplicated access points from all WiFi devices.
 // Hidden networks (empty SSID) are excluded.
 func (c *Client) AccessPoints() ([]AccessPoint, error) {
@@ -199,19 +208,13 @@ func (c *Client) ListSavedConnections() ([]SavedConnection, error) {
 
 // Connect activates an existing saved connection profile on the best available
 // device. connectionPath must be a path returned by ListSavedConnections.
-//
-// To activate on a specific device pass its path; pass "" to let NM choose.
-func (c *Client) Connect(connectionPath, devicePath string) (*ConnectResult, error) {
+func (c *Client) Connect(connectionPath string) (*ConnectResult, error) {
 	cp := dbus.ObjectPath(connectionPath)
-	dp := anyDevice
-	if devicePath != "" {
-		dp = dbus.ObjectPath(devicePath)
-	}
 
 	var activePath dbus.ObjectPath
 	if err := c.obj(nmPath).Call(
 		nmIface+".ActivateConnection", 0,
-		cp, dp, anyAP,
+		cp, anyDevice, anyAP,
 	).Store(&activePath); err != nil {
 		return nil, fmt.Errorf("network: ActivateConnection: %w", err)
 	}
@@ -219,15 +222,12 @@ func (c *Client) Connect(connectionPath, devicePath string) (*ConnectResult, err
 	return &ConnectResult{ActiveConnectionPath: string(activePath)}, nil
 }
 
-// ConnectWifi connects to a WiFi network by SSID, creating a new in-memory
-// connection profile. Pass password="" for open networks.
+// CreateWifi creates a WiFi profile.
 //
-// To use a specific WiFi device pass its path; pass "" to let NM choose.
-// On success the new profile and active connection paths are returned.
-func (c *Client) ConnectWifi(ssid, password, devicePath string) (*ConnectResult, error) {
+// On success the active connection path is returned.
+func (c *Client) CreateWifi(id string, ssid string, password string) (string, error) {
 	settings := map[string]map[string]dbus.Variant{
 		"connection": {
-			"id":   dbus.MakeVariant(ssid),
 			"type": dbus.MakeVariant("802-11-wireless"),
 		},
 		"802-11-wireless": {
@@ -243,20 +243,7 @@ func (c *Client) ConnectWifi(ssid, password, devicePath string) (*ConnectResult,
 		}
 	}
 
-	dp := anyDevice
-	if devicePath != "" {
-		dp = dbus.ObjectPath(devicePath)
-	}
-
-	var connPath, activePath dbus.ObjectPath
-	if err := c.obj(nmPath).Call(
-		nmIface+".AddAndActivateConnection", 0,
-		settings, dp, anyAP,
-	).Store(&connPath, &activePath); err != nil {
-		return nil, fmt.Errorf("network: AddAndActivateConnection: %w", err)
-	}
-
-	return &ConnectResult{ActiveConnectionPath: string(activePath)}, nil
+	return c.createOrUpdate(id, settings)
 }
 
 // Disconnect deactivates an active connection.
@@ -272,10 +259,9 @@ func (c *Client) Disconnect(activeConnectionPath string) error {
 }
 
 // CreateAP creates or updates a WiFi access poinrt profile
-func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (dbus.ObjectPath, error) {
+func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (string, error) {
 	settings := map[string]map[string]dbus.Variant{
 		"connection": {
-			"id":          dbus.MakeVariant(id),
 			"type":        dbus.MakeVariant("802-11-wireless"),
 			"autoconnect": dbus.MakeVariant(false),
 		},
@@ -295,6 +281,12 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (dbus.Obje
 		},
 	}
 
+	return c.createOrUpdate(id, settings)
+}
+
+func (c *Client) createOrUpdate(id string, settings map[string]map[string]dbus.Variant) (string, error) {
+	settings["connection"]["id"] = dbus.MakeVariant(id)
+
 	var found *SavedConnection
 	if saved, err := c.ListSavedConnections(); err != nil {
 		return "", fmt.Errorf("network: could not list existing profiles: %w", err)
@@ -306,26 +298,48 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (dbus.Obje
 		}
 	}
 
+	var path dbus.ObjectPath
 	if found != nil {
 		connObj := c.obj(dbus.ObjectPath(found.Path))
 		err := connObj.Call(
 			nmConnIface+".Update", 0, settings,
 		).Err
 		if err != nil {
-			return "", fmt.Errorf("network: could not update access point: %w", err)
+			return "", fmt.Errorf("network: could not update profile: %w", err)
 		}
-		return dbus.ObjectPath(found.Path), nil
+		return found.Path, nil
 	} else {
 		iface := nmSettingsIface + ".AddConnection"
 
-		var path dbus.ObjectPath
 		if err := c.obj(nmSettingsPath).Call(
 			iface, 0, settings,
 		).Store(&path); err != nil {
 			return "", fmt.Errorf("network: could not create access point: %w", err)
 		}
-		return path, nil
+		return string(path), nil
 	}
+}
+
+func (c *Client) WaitWhileConnecting(path string, timeout time.Duration) (string, error) {
+	end := time.Now().Add(timeout)
+	var state NMActiveConnectionState
+	var err error
+	for now := time.Now(); now.Before(end); {
+		var a ActiveConnection
+		a, err = c.readActiveConn(dbus.ObjectPath(path))
+		if err != nil {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		state = NMActiveConnectionState(a.State)
+		if state == NMActiveConnectionStateActivating {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		break
+	}
+	return activeConnectionStateName(state), err
 }
 
 // internal helpers
@@ -397,11 +411,12 @@ func (c *Client) readActiveConn(path dbus.ObjectPath) (ActiveConnection, error) 
 	def, _ := defV.Value().(bool)
 
 	return ActiveConnection{
-		Path:    string(path),
-		ID:      id,
-		UUID:    uuid,
-		State:   state,
-		Default: def,
+		Path:      string(path),
+		ID:        id,
+		UUID:      uuid,
+		State:     state,
+		StateName: activeConnectionStateName(NMActiveConnectionState(state)),
+		Default:   def,
 	}, nil
 }
 
@@ -567,6 +582,21 @@ func deviceStateName(s uint32) string {
 		return "deactivating"
 	case 120:
 		return "failed"
+	default:
+		return "unknown"
+	}
+}
+
+func activeConnectionStateName(s NMActiveConnectionState) string {
+	switch s {
+	case NMActiveConnectionStateActivating:
+		return "activating"
+	case NMActiveConnectionStateActivated:
+		return "activated"
+	case NMActiveConnectionStateDeactivating:
+		return "deactivating"
+	case NMActiveConnectionStateDeactivated:
+		return "deactivated"
 	default:
 		return "unknown"
 	}
