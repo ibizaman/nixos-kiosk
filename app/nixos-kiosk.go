@@ -110,6 +110,26 @@ func main() {
 				},
 				Action: serve,
 			},
+			{
+				Name:    "chromium",
+				Aliases: []string{"c"},
+				Usage:   "Change URL displayed by chromium",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name:  "URL",
+						Value: "URL to display",
+					},
+				},
+				Flags: []cli.Flag{
+					&cli.Int16Flag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Usage:   "port on which to talk to chromium",
+						Value:   9222,
+					},
+				},
+				Action: chromiumNagivate,
+			},
 		},
 	}
 
@@ -261,6 +281,18 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	defer n.Close()
 
 	return web.Start(n, addr, ssid, password)
+}
+
+func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
+	url := cmd.StringArg("URL")
+	port := cmd.Uint16("port")
+
+	err := chromium.Navigate(port, url)
+	if err != nil {
+		log.Fatalf("could not display new URL in chromium: %s", err)
+	}
+
+	return nil
 }
 
 var letters = []rune("123456789")
