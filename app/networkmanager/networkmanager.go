@@ -2,6 +2,7 @@ package networkmanager
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/godbus/dbus/v5"
@@ -80,6 +81,7 @@ func (c *Client) NetworkInfo() (*NetworkInfo, error) {
 
 	aps, err := c.AccessPoints()
 	if err != nil {
+		log.Printf("WARN: could not get access points info: %s", err)
 		aps = nil // non-fatal; no wifi adapter present
 	}
 
@@ -460,14 +462,17 @@ func (c *Client) allAccessPoints(devs []NetworkDevice) ([]AccessPoint, error) {
 
 	for _, d := range devs {
 		if d.Type != NMDeviceTypeWifi {
+			log.Printf("AllAccessPoints: ignoring device %s with type %s", d.Path, d.TypeName)
 			continue
 		}
 		aps, err := c.apForDevice(dbus.ObjectPath(d.Path))
 		if err != nil {
+			log.Printf("AllAccessPoints: could not get access points for device %s: %s", d.Path, err)
 			continue
 		}
 		for _, ap := range aps {
 			if ap.SSID == "" {
+				log.Printf("AllAccessPoints: ignoring ap for device %s %s with empty SSID", d.Path, ap.Path)
 				continue
 			}
 			if _, dup := seen[ap.SSID]; dup {
