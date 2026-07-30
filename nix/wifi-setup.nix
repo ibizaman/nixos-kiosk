@@ -33,6 +33,14 @@ in
     };
   };
   config = lib.mkIf cfg.enable {
+    environment.systemPackages = [
+      pkgs.dig
+      cfg.package
+    ];
+
+    networking.wireless.enable = lib.mkOverride 0 true;
+    networking.networkmanager.enable = true;
+
     # Always active
     systemd.services.nixos-kiosk = {
       description = "NixOS Kiosk";
@@ -52,35 +60,19 @@ in
       };
     };
 
-    systemd.targets.kiosk-normal = {
-      description = "Normal kiosk mode";
-
-      wantedBy = [
-        "multi-user.target"
+    users.users.nixos = {
+      isNormalUser = true;
+      initialPassword = "nixos";
+      group = "nixos";
+      extraGroups = [
+        "wheel"
       ];
     };
-
-    systemd.targets.kiosk-setup = {
-      description = "WiFi setup kiosk mode";
-      wantedBy = [ "multi-user.target" ];
-
-      unitConfig = {
-        AllowIsolate = true;
-      };
-
-      wants = [
-        "dnsmasq.service"
-        "nginx.service"
-        "kiosk-chromium.service"
-      ];
-
-      after = [
-        "network.target"
-      ];
-    };
+    users.groups.nixos = { };
 
     users.users.frame = {
       isNormalUser = true;
+      initialPassword = "kiosk";
       group = "frame";
       extraGroups = [
         "video"
@@ -88,33 +80,21 @@ in
         "input"
       ];
     };
-    users.group.frame = { };
+    users.groups.frame = { };
 
-    systemd.services.kiosk-chromium = {
-      description = "Chromium WiFi setup kiosk";
+    services.cage = {
+      enable = true;
 
-      wantedBy = [
-        "kiosk-setup.target"
-      ];
+      user = "frame";
 
-      partOf = [
-        "kiosk-setup.target"
-      ];
-
-      after = [
-        "systemd-user-sessions.service"
-      ];
-
-      serviceConfig = {
-        User = "frame";
-
-        Environment = [
-          "DISPLAY=:0"
-        ];
-
-        ExecStart = ''
-          ${pkgs.cage}/bin/cage \
-            ${pkgs.chromium}/bin/chromium \
+      program = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "kiosk-chromium-setup";
+          runtimeInputs = [
+            pkgs.chromium
+          ];
+          text = ''
+            chromium \
               --kiosk \
               --no-first-run \
               --disable-infobars \
@@ -122,10 +102,9 @@ in
               --remote-debugging-address=127.0.0.1 \
               --remote-debugging-port=${toString cfg.chromiumPort} \
               http://setup.local/connect
-        '';
-
-        Restart = "always";
-      };
+          '';
+        }
+      );
     };
 
     services.dnsmasq = {
@@ -134,8 +113,7 @@ in
       settings = {
         # interface = "wlan0";
         bind-interfaces = true;
-
-        # Never forward DNS
+        domain-needed = true;
         no-resolv = true;
 
         # Answer every DNS query with our AP IP
@@ -150,12 +128,16 @@ in
     };
 
     systemd.services.dnsmasq = {
-      partOf = [
-        "kiosk-setup.target"
+      after = [
+        "network.target"
+      ];
+
+      wants = [
+        "network.target"
       ];
 
       wantedBy = [
-        "kiosk-setup.target"
+        "multi-user.target"
       ];
     };
 
@@ -181,12 +163,16 @@ in
     };
 
     systemd.services.nginx = {
-      partOf = [
-        "kiosk-setup.target"
+      after = [
+        "network.target"
+      ];
+
+      wants = [
+        "network.target"
       ];
 
       wantedBy = [
-        "kiosk-setup.target"
+        "multi-user.target"
       ];
     };
   };
