@@ -73,6 +73,7 @@
                 # raspberry-pi-3.bluetooth
               ];
             };
+
             rpi-sd-filesystems = {
               fileSystems = {
                 "/boot/firmware" = {
@@ -92,6 +93,7 @@
                 };
               };
             };
+
             rpi-hdmi = {
               hardware.raspberry-pi.config.all.options = {
                 hdmi_force_hotplug = {
@@ -104,14 +106,13 @@
                 };
               };
             };
-            common =
+
+            rpi-common =
               {
                 config,
                 ...
               }:
               {
-                networking.hostName = "nixos-kiosk";
-
                 system.nixos.tags =
                   let
                     cfg = config.boot.loader.raspberry-pi;
@@ -122,9 +123,31 @@
                     config.boot.kernelPackages.kernel.version
                   ];
               };
+
+            nixos-kiosk = {
+              imports = [
+                ./nix/wifi-setup.nix
+              ];
+
+              kiosk.enable = true;
+            };
+
+            magic-frame = {
+              networking.hostName = "magic-frame";
+            };
           };
 
           nixosConfigurations = {
+            nixos-kiosk = nixpkgs.lib.nixosSystem {
+              modules = [
+                {
+                  nixpkgs.hostPlatform = "x86_64-linux";
+                }
+                self.nixosModules.nixos-kiosk
+                self.nixosModules.magic-frame
+              ];
+            };
+
             nixos-kiosk-rpi2 = nixos-raspberrypi.lib.nixosSystem {
               specialArgs = inputs;
               modules = [
@@ -135,7 +158,9 @@
                 self.nixosModules.rpi-sd-filesystems
                 self.nixosModules.rpi2-hw
                 self.nixosModules.rpi-hdmi
-                self.nixosModules.common
+                self.nixosModules.rpi-common
+                self.nixosModules.nixos-kiosk
+                self.nixosModules.magic-frame
               ];
             };
 
@@ -149,7 +174,9 @@
                 self.nixosModules.rpi2-hw
                 self.nixosModules.rpi-hdmi
                 nixos-raspberrypi.nixosModules.sd-image
-                self.nixosModules.common
+                self.nixosModules.rpi-common
+                self.nixosModules.nixos-kiosk
+                self.nixosModules.magic-frame
               ];
             };
 
@@ -163,7 +190,9 @@
                 self.nixosModules.rpi-sd-filesystems
                 self.nixosModules.rpi3-hw
                 self.nixosModules.rpi-hdmi
-                self.nixosModules.common
+                self.nixosModules.rpi-common
+                self.nixosModules.nixos-kiosk
+                self.nixosModules.magic-frame
               ];
             };
 
@@ -177,11 +206,14 @@
                 self.nixosModules.rpi3-hw
                 self.nixosModules.rpi-hdmi
                 nixos-raspberrypi.nixosModules.sd-image
-                self.nixosModules.common
+                self.nixosModules.rpi-common
+                self.nixosModules.nixos-kiosk
+                self.nixosModules.magic-frame
               ];
             };
           };
 
+          vms.nixos-kiosk = self.nixosConfigurations.nixos-kiosk.config.system.build.vm;
           sdImages.nixos-kiosk-rpi2 =
             self.nixosConfigurations.nixos-kiosk-rpi2-image.config.system.build.sdImage;
           sdImages.nixos-kiosk-rpi3 =
