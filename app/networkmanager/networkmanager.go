@@ -158,6 +158,21 @@ func (c *Client) GetActiveConnection(path dbus.ObjectPath) (ActiveConnection, er
 	return ac, nil
 }
 
+func (c *Client) GetActiveConnectionByID(id string) (*ActiveConnection, error) {
+	activeConnections, err := c.ActiveConnections()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve networkmanager active connections: %w", err)
+	}
+
+	for _, ac := range activeConnections {
+		if ac.ID == id {
+			return &ac, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // AccessPoints returns deduplicated access points from all WiFi devices.
 // Hidden networks (empty SSID) are excluded.
 func (c *Client) AccessPoints() ([]AccessPoint, error) {
@@ -204,6 +219,26 @@ func (c *Client) ListSavedConnections() ([]SavedConnection, error) {
 		out = append(out, sc)
 	}
 	return out, nil
+}
+
+// GetSavedConnection returns the profile of the given path.
+func (c *Client) GetSavedConnection(path string) (SavedConnection, error) {
+	return c.readSavedConn(dbus.ObjectPath(path))
+}
+
+func (c *Client) GetSavedConnectionByID(id string) (*SavedConnection, error) {
+	savedConnections, err := c.ListSavedConnections()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve networkmanager saved connections: %w", err)
+	}
+
+	for _, sc := range savedConnections {
+		if sc.ID == id {
+			return &sc, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // connect / disconnect
