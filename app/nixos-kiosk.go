@@ -7,9 +7,12 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
+	"github.com/ibizaman/nixos-kiosk/chromium"
+	"github.com/ibizaman/nixos-kiosk/daemon"
 	"github.com/ibizaman/nixos-kiosk/networkmanager"
 	"github.com/ibizaman/nixos-kiosk/web"
 	"github.com/urfave/cli/v3"
@@ -101,7 +104,7 @@ func main() {
 					},
 				},
 				Flags: []cli.Flag{
-					&cli.Int16Flag{
+					&cli.Uint16Flag{
 						Name:    "port",
 						Aliases: []string{"p"},
 						Usage:   "port on which to listen to",
@@ -121,7 +124,7 @@ func main() {
 					},
 				},
 				Flags: []cli.Flag{
-					&cli.Int16Flag{
+					&cli.Uint16Flag{
 						Name:    "port",
 						Aliases: []string{"p"},
 						Usage:   "port on which to talk to chromium",
@@ -129,6 +132,31 @@ func main() {
 					},
 				},
 				Action: chromiumNagivate,
+			},
+			{
+				Name:    "daemon",
+				Aliases: []string{"d"},
+				Usage:   "Serve web pages, watch for active WiFi connection and switch systemd target",
+				Flags: []cli.Flag{
+					&cli.Uint16Flag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Usage:   "port on which to listen to",
+						Value:   8000,
+					},
+					&cli.Uint16Flag{
+						Name:    "chromium-port",
+						Aliases: []string{"c"},
+						Usage:   "port on which chromium listens to",
+						Value:   9222,
+					},
+					&cli.StringFlag{
+						Name:  "ssid",
+						Usage: "port on which to listen to",
+						Value: "Kiosk setup",
+					},
+				},
+				Action: startDaemon,
 			},
 		},
 	}
@@ -270,7 +298,7 @@ func readPassword(cmd *cli.Command) string {
 
 func serve(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
-	port := cmd.Int16("port")
+	port := cmd.Uint16("port")
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	password := genPassword()
 
@@ -296,6 +324,24 @@ func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+func startDaemon(ctx context.Context, cmd *cli.Command) error {
+	bp := cmd.Uint16("browser-port")
+	c := daemon.Config{
+		SSID:       cmd.StringArg("SSID"),
+		Port:       cmd.Uint16("port"),
+		ListenAddr: fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port")),
+		Password:   genPassword(),
+		SetupAction: func() {
+			chromium.Navigate(bp, "http://setup.local/connect")
+		},
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	return daemon.Start(ctx, c)
 }
 
 var letters = []rune("123456789")

@@ -90,3 +90,8 @@ type NetworkInfo struct {
 	ActiveConnections []ActiveConnection `json:"activeConnections"`
 	AccessPoints      []AccessPoint      `json:"accessPoints"` // deduplicated by SSID
 }
+
+func (a ActiveConnection) IsActivatingOrActivated() bool {
+	return a.State == uint32(NMActiveConnectionStateActivated) ||
+		a.State == uint32(NMActiveConnectionStateActivating)
+}
