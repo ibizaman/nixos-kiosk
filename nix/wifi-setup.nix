@@ -26,6 +26,11 @@ in
       type = lib.types.str;
       default = "192.168.4.10,192.168.4.100,12h";
     };
+
+    chromiumPort = lib.mkOption {
+      type = lib.types.port;
+      default = 9222;
+    };
   };
   config = lib.mkIf cfg.enable {
     # Always active
@@ -114,6 +119,8 @@ in
               --no-first-run \
               --disable-infobars \
               --noerrdialogs \
+              --remote-debugging-address=127.0.0.1 \
+              --remote-debugging-port=${toString cfg.chromiumPort} \
               http://setup.local/connect
         '';
 
