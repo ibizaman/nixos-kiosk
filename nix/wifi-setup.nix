@@ -6,11 +6,16 @@
 }:
 
 let
-  cfg = config.services.kiosk;
+  cfg = config.kiosk;
 in
 {
   options.kiosk = {
     enable = lib.mkEnableOption "NixOS Kiosk";
+
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.callPackage ./package.nix { };
+    };
 
     kioskIP = lib.mkOption {
       type = lib.types.str;
@@ -36,7 +41,7 @@ in
       ];
 
       serviceConfig = {
-        ExecStart = "${pkgs.nixos-kiosk}/bin/nixos-kiosk serve";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk serve";
         DynamicUser = true;
         Restart = "always";
       };
