@@ -280,7 +280,10 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer n.Close()
 
-	return web.Start(n, addr, ssid, password)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	return web.Start(ctx, n, addr, ssid, password)
 }
 
 func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {

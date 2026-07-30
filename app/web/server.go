@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -19,7 +20,7 @@ import (
 var htmlFiles embed.FS
 var htmlTemplates = template.Must(template.ParseFS(htmlFiles, "*.html"))
 
-func Start(nm *networkmanager.Client, addr string, ssid string, psk string) error {
+func Start(ctx context.Context, nm *networkmanager.Client, addr string, ssid string, psk string) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/connect", qrcodePage(ssid, psk))
@@ -37,11 +38,34 @@ func Start(nm *networkmanager.Client, addr string, ssid string, psk string) erro
 
 	log.Printf("listening on %s\n", addr)
 
-	err := server.ListenAndServe()
+	err := serve(ctx, server)
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err
+}
+
+func serve(ctx context.Context, srv *http.Server) error {
+	errCh := make(chan error, 1)
+
+	go func() {
+		errCh <- srv.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+
+		return <-errCh
+
+	case err := <-errCh:
+		return err
+	}
 }
 
 type Data struct {
