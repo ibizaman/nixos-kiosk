@@ -13,11 +13,12 @@ import (
 )
 
 type Config struct {
-	SSID        string
-	Port        uint16
-	ListenAddr  string
-	Password    string
-	SetupAction func()
+	SSID         string
+	Port         uint16
+	ListenAddr   string
+	Password     string
+	SetupAction  func()
+	NormalAction func()
 }
 
 func Start(ctx context.Context, c Config) error {
@@ -49,6 +50,7 @@ func Start(ctx context.Context, c Config) error {
 
 func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID string) {
 	var lastActiveConnection time.Time
+	var lastStateIsNormal bool
 
 	for {
 		if ctx.Err() != nil {
@@ -61,6 +63,10 @@ func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID
 		}
 		if activeConnection != nil && activeConnection.IsActivatingOrActivated() {
 			lastActiveConnection = time.Now().UTC()
+			if !lastStateIsNormal {
+				c.NormalAction()
+				lastStateIsNormal = true
+			}
 			continue
 		}
 
@@ -79,7 +85,10 @@ func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID
 				fmt.Fprintf(os.Stderr, "watcher: could not start Access Point: %s", err)
 			}
 
-			c.SetupAction()
+			if lastStateIsNormal {
+				c.SetupAction()
+				lastStateIsNormal = false
+			}
 		}
 	}
 }

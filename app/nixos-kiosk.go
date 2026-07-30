@@ -137,6 +137,16 @@ func main() {
 				Name:    "daemon",
 				Aliases: []string{"d"},
 				Usage:   "Serve web pages, watch for active WiFi connection and switch systemd target",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name:  "SSID",
+						Value: "Kiosk Setup",
+					},
+					&cli.StringArg{
+						Name:  "URL",
+						Value: "URL to show when WiFi connection is active",
+					},
+				},
 				Flags: []cli.Flag{
 					&cli.Uint16Flag{
 						Name:    "port",
@@ -149,11 +159,6 @@ func main() {
 						Aliases: []string{"c"},
 						Usage:   "port on which chromium listens to",
 						Value:   9222,
-					},
-					&cli.StringFlag{
-						Name:  "ssid",
-						Usage: "port on which to listen to",
-						Value: "Kiosk setup",
 					},
 				},
 				Action: startDaemon,
@@ -335,6 +340,9 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		Password:   genPassword(),
 		SetupAction: func() {
 			chromium.Navigate(bp, "http://setup.local/connect")
+		},
+		NormalAction: func() {
+			chromium.Navigate(bp, cmd.StringArg("URL"))
 		},
 	}
 
