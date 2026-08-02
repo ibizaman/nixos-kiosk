@@ -16,6 +16,7 @@ type Config struct {
 	SSID         string
 	ListenAddr   string
 	Password     string
+	DNSIP        string
 	SetupAction  func()
 	NormalAction func()
 }
@@ -78,7 +79,7 @@ func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID
 		}
 
 		if savedConnection == nil || time.Now().UTC().Sub(lastActiveConnection) > time.Minute {
-			path, err := n.CreateOrUpdateAP(profileID, c.SSID, c.Password)
+			path, err := n.CreateOrUpdateAP(profileID, c.SSID, c.Password, c.DNSIP)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "watcher: could not create Access Point: %s\n", err)
 			}

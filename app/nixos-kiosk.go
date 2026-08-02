@@ -88,6 +88,11 @@ func main() {
 								Aliases: []string{"f"},
 								Usage:   "filename where the PSK is stored",
 							},
+							&cli.StringFlag{
+								Name:    "dns",
+								Aliases: []string{"d"},
+								Usage:   "IP of the DNS server",
+							},
 						},
 						Action: networkManagerAddAP,
 					},
@@ -172,6 +177,11 @@ func main() {
 						Aliases: []string{"c"},
 						Usage:   "port on which chromium listens to",
 						Value:   9222,
+					},
+					&cli.StringFlag{
+						Name:    "dns",
+						Aliases: []string{"d"},
+						Usage:   "IP of the DNS server",
 					},
 				},
 				Action: startDaemon,
@@ -276,6 +286,7 @@ func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	id := cmd.StringArg("id")
 	ssid := cmd.StringArg("SSID")
+	dns := cmd.StringArg("dns")
 	password := readPassword(cmd)
 
 	c, err := networkmanager.NewClient()
@@ -284,7 +295,7 @@ func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer c.Close()
 
-	res, err := c.CreateOrUpdateAP(id, ssid, password)
+	res, err := c.CreateOrUpdateAP(id, ssid, password, dns)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -374,6 +385,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		SSID:       cmd.StringArg("SSID"),
 		ListenAddr: fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port")),
 		Password:   genPassword(),
+		DNSIP:      cmd.String("dns"),
 		SetupAction: func() {
 			navigateChan <- "http://setup.local/connect"
 		},
