@@ -14,7 +14,6 @@ import (
 
 type Config struct {
 	SSID         string
-	Port         uint16
 	ListenAddr   string
 	Password     string
 	SetupAction  func()
@@ -59,36 +58,42 @@ func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID
 
 		activeConnection, err := n.GetActiveConnectionByID(profileID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s", err)
+			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
 		}
 		if activeConnection != nil && activeConnection.IsActivatingOrActivated() {
 			lastActiveConnection = time.Now().UTC()
 			if !lastStateIsNormal {
+				fmt.Printf("watcher: entering normal mode\n")
 				c.NormalAction()
 				lastStateIsNormal = true
 			}
+
+			time.Sleep(5 * time.Second)
 			continue
 		}
 
 		savedConnection, err := n.GetSavedConnectionByID(profileID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s", err)
+			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
 		}
 
 		if savedConnection == nil || time.Now().UTC().Sub(lastActiveConnection) > time.Minute {
 			path, err := n.CreateOrUpdateAP(profileID, c.SSID, c.Password)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "watcher: could not create Access Point: %s", err)
+				fmt.Fprintf(os.Stderr, "watcher: could not create Access Point: %s\n", err)
 			}
 
 			if _, err := n.Connect(path); err != nil {
-				fmt.Fprintf(os.Stderr, "watcher: could not start Access Point: %s", err)
+				fmt.Fprintf(os.Stderr, "watcher: could not start Access Point: %s\n", err)
 			}
 
 			if lastStateIsNormal {
+				fmt.Printf("watcher: entering setup mode\n")
 				c.SetupAction()
 				lastStateIsNormal = false
 			}
 		}
+
+		time.Sleep(5 * time.Second)
 	}
 }
