@@ -1,8 +1,10 @@
 package networkmanager
 
 import (
+	"encoding/binary"
 	"fmt"
 	"log"
+	"net"
 	"time"
 
 	"github.com/godbus/dbus/v5"
@@ -296,7 +298,7 @@ func (c *Client) Disconnect(activeConnectionPath string) error {
 }
 
 // CreateAP creates or updates a WiFi access poinrt profile
-func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (string, error) {
+func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, dns string) (string, error) {
 	settings := map[string]map[string]dbus.Variant{
 		"connection": {
 			"type":        dbus.MakeVariant("802-11-wireless"),
@@ -311,7 +313,11 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string) (string, e
 			"psk":      dbus.MakeVariant(psk),
 		},
 		"ipv4": {
-			"method": dbus.MakeVariant("shared"),
+			"method": dbus.MakeVariant("manual"),
+			"dns": dbus.MakeVariant([]uint32{
+				binary.BigEndian.Uint32(net.ParseIP("127.0.0.1").To4()),
+			}),
+			"ignore-auto-dns": dbus.MakeVariant(true),
 		},
 		"ipv6": {
 			"method": dbus.MakeVariant("disabled"),
