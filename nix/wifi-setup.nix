@@ -167,7 +167,27 @@ in
     services.nginx = {
       enable = true;
 
-      virtualHosts."setup.local" = {
+      virtualHosts."_" = {
+        listen = [
+          {
+            addr = "0.0.0.0";
+            port = 80;
+            extraParameters = [
+              "default_server"
+              # Seemingly the default value of net.core.somaxconn
+              "backlog=4096"
+              "deferred"
+            ];
+          }
+        ];
+
+        locations."/" = {
+          extraConfig = ''
+            return 301 http://${cfg.setupURL};
+          '';
+        };
+      };
+      virtualHosts."${cfg.setupURL}" = {
         listen = [
           {
             addr = "0.0.0.0";
