@@ -366,30 +366,28 @@ func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 }
 
 func startDaemon(ctx context.Context, cmd *cli.Command) error {
-	cClient := chromium.NewClient("127.0.0.1", cmd.Uint16("browser-port"))
+	navigateChan := make(chan string)
 
-	close, err := cClient.Connect()
-	if err != nil {
-		return err
-	}
-	defer close()
+	go navigator(ctx, "127.0.0.1", cmd.Uint16("chromium-port"), navigateChan)
 
 	c := daemon.Config{
 		SSID:       cmd.StringArg("SSID"),
-		Port:       cmd.Uint16("port"),
 		ListenAddr: fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port")),
 		Password:   genPassword(),
 		SetupAction: func() {
-			cClient.Navigate("http://setup.local/connect")
+			navigateChan <- "http://setup.local/connect"
 		},
 		NormalAction: func() {
-			cClient.Navigate(cmd.StringArg("URL"))
+			navigateChan <- cmd.StringArg("URL")
 		},
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	defer func() {
+		close(navigateChan)
+	}()
 	return daemon.Start(ctx, c)
 }
 
@@ -405,4 +403,49 @@ func genPassword() string {
 		b[i+5] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan string) func() {
+	var url string
+	var gotNew bool
+
+	return func() {
+		go func() {
+			for {
+				newURL, ok := <-navigateChan
+				if !ok {
+					return
+				}
+
+				if newURL != url {
+					url = newURL
+					gotNew = true
+					fmt.Fprintf(os.Stderr, "navigator: will navigate to new url: %s", url)
+				}
+			}
+		}()
+
+		for {
+			if ctx.Err() != nil {
+				return
+			}
+
+			if gotNew {
+				cClient := chromium.NewClient(ip, port)
+
+				close, err := cClient.Connect()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s", err)
+				}
+				defer close()
+
+				if err := cClient.Navigate(url); err != nil {
+					fmt.Fprintf(os.Stderr, "navigator: could navigate to new url: %s", err)
+				}
+				gotNew = false
+			}
+
+			time.Sleep(5 * time.Second)
+		}
+	}
 }
