@@ -27,9 +27,32 @@ in
       default = "192.168.4.10,192.168.4.100,12h";
     };
 
+    normalURL = lib.mkOption {
+      type = lib.types.str;
+      default = "https://kiosk.tiserbox.com/view";
+    };
+
     chromiumPort = lib.mkOption {
       type = lib.types.port;
       default = 9222;
+    };
+
+    setupPort = lib.mkOption {
+      type = lib.types.port;
+      default = 8000;
+    };
+
+    setupSSID = lib.mkOption {
+      type = lib.types.str;
+      default = "Kiosk Setup";
+    };
+
+    setupURL = lib.mkOption {
+      type = lib.types.str;
+      description = ''
+        It's best to avoid .local domain as this is used by mDNS.
+      '';
+      default = "setup.kiosk";
     };
   };
   config = lib.mkIf cfg.enable {
@@ -54,7 +77,7 @@ in
       ];
 
       serviceConfig = {
-        ExecStart = "${cfg.package}/bin/nixos-kiosk serve";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon ${cfg.setupSSID} ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --dns ${cfg.kioskIP}";
         DynamicUser = true;
         Restart = "always";
       };
@@ -101,7 +124,7 @@ in
               --noerrdialogs \
               --remote-debugging-address=127.0.0.1 \
               --remote-debugging-port=${toString cfg.chromiumPort} \
-              http://setup.local/connect
+              http://${cfg.setupURL}/connect
           '';
         }
       );
@@ -153,7 +176,7 @@ in
         ];
 
         locations."/" = {
-          proxyPass = "http://127.0.0.1:8000";
+          proxyPass = "http://127.0.0.1:${toString cfg.setupPort}";
           extraConfig = ''
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
