@@ -53,6 +53,9 @@
               app-networkmanager = pkgs.callPackage ./app/tests/networkmanager.nix {
                 inherit (self'.packages) nixos-kiosk;
               };
+              app-chromium = pkgs.callPackage ./app/tests/chromium.nix {
+                inherit (self'.packages) nixos-kiosk;
+              };
             };
           };
 

@@ -116,13 +116,7 @@ func main() {
 			{
 				Name:    "chromium",
 				Aliases: []string{"c"},
-				Usage:   "Change URL displayed by chromium",
-				Arguments: []cli.Argument{
-					&cli.StringArg{
-						Name:  "URL",
-						Value: "URL to display",
-					},
-				},
+				Usage:   "Control a chromium browser through the debug port",
 				Flags: []cli.Flag{
 					&cli.Uint16Flag{
 						Name:    "port",
@@ -131,7 +125,26 @@ func main() {
 						Value:   9222,
 					},
 				},
-				Action: chromiumNagivate,
+				Commands: []*cli.Command{
+					{
+						Name:    "url",
+						Aliases: []string{"u"},
+						Usage:   "Print the current displayed URL",
+						Action:  chromiumGetURL,
+					},
+					{
+						Name:    "navigate",
+						Aliases: []string{"n"},
+						Usage:   "Navigate to the given URL",
+						Arguments: []cli.Argument{
+							&cli.StringArg{
+								Name:  "URL",
+								Value: "URL to display",
+							},
+						},
+						Action: chromiumNagivate,
+					},
+				},
 			},
 			{
 				Name:    "daemon",
@@ -319,12 +332,33 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	return web.Start(ctx, n, addr, ssid, password)
 }
 
+func chromiumGetURL(ctx context.Context, cmd *cli.Command) error {
+	port := cmd.Uint16("port")
+
+	cClient := chromium.NewClient("127.0.0.1", port)
+
+	url, err := cClient.GetCurrentURL()
+	if err != nil {
+		log.Fatalf("could not get current URL in chromium: %s", err)
+	}
+
+	fmt.Println(url)
+	return nil
+}
+
 func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 	url := cmd.StringArg("URL")
 	port := cmd.Uint16("port")
 
-	err := chromium.Navigate(port, url)
+	cClient := chromium.NewClient("127.0.0.1", port)
+
+	close, err := cClient.Connect()
 	if err != nil {
+		return err
+	}
+	defer close()
+
+	if err := cClient.Navigate(url); err != nil {
 		log.Fatalf("could not display new URL in chromium: %s", err)
 	}
 
@@ -332,17 +366,24 @@ func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 }
 
 func startDaemon(ctx context.Context, cmd *cli.Command) error {
-	bp := cmd.Uint16("browser-port")
+	cClient := chromium.NewClient("127.0.0.1", cmd.Uint16("browser-port"))
+
+	close, err := cClient.Connect()
+	if err != nil {
+		return err
+	}
+	defer close()
+
 	c := daemon.Config{
 		SSID:       cmd.StringArg("SSID"),
 		Port:       cmd.Uint16("port"),
 		ListenAddr: fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port")),
 		Password:   genPassword(),
 		SetupAction: func() {
-			chromium.Navigate(bp, "http://setup.local/connect")
+			cClient.Navigate("http://setup.local/connect")
 		},
 		NormalAction: func() {
-			chromium.Navigate(bp, cmd.StringArg("URL"))
+			cClient.Navigate(cmd.StringArg("URL"))
 		},
 	}
 
