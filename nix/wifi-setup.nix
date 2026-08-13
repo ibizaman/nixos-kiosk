@@ -76,7 +76,7 @@ in
       ];
 
       serviceConfig = {
-        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --dns ${cfg.kioskIP}";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP}";
         User = "kiosk-controller";
         Restart = "always";
       };

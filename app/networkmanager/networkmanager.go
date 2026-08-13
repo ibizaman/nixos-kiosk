@@ -298,7 +298,7 @@ func (c *Client) Disconnect(activeConnectionPath string) error {
 }
 
 // CreateAP creates or updates a WiFi access poinrt profile
-func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, dns string) (string, error) {
+func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, ip string, prefix uint8) (string, error) {
 	settings := map[string]map[string]dbus.Variant{
 		"connection": {
 			"type":        dbus.MakeVariant("802-11-wireless"),
@@ -314,8 +314,14 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, dns string
 		},
 		"ipv4": {
 			"method": dbus.MakeVariant("manual"),
+			"address-data": dbus.MakeVariant([]map[string]dbus.Variant{
+				{
+					"address": dbus.MakeVariant(ip),
+					"prefix":  dbus.MakeVariant(uint32(prefix)),
+				},
+			}),
 			"dns": dbus.MakeVariant([]uint32{
-				binary.BigEndian.Uint32(net.ParseIP("127.0.0.1").To4()),
+				binary.BigEndian.Uint32(net.ParseIP(ip).To4()),
 			}),
 			"ignore-auto-dns": dbus.MakeVariant(true),
 		},
