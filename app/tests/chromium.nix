@@ -53,25 +53,25 @@ pkgs.testers.runNixOSTest {
   };
 
   testScript = ''
-  def get_current_url():
-      return machine.wait_until_succeeds("nixos-kiosk chromium url", timeout=10).strip()
+    def get_current_url():
+        return machine.wait_until_succeeds("nixos-kiosk chromium url", timeout=10).strip()
 
-  def navigate(url):
-      print(machine.succeed(f"nixos-kiosk chromium navigate {url}"))
+    def navigate(url):
+        print(machine.succeed(f"nixos-kiosk chromium navigate {url}"))
 
-  machine.start() 
-  machine.wait_for_unit("multi-user.target")
-  machine.wait_for_unit("cage-tty1.service")
-  machine.wait_for_open_port(9222)
+    machine.start()
+    machine.wait_for_unit("multi-user.target")
+    machine.wait_for_unit("cage-tty1.service")
+    machine.wait_for_open_port(9222)
 
-  url = get_current_url()
-  if url != "http://default/":
-      raise Exception(f"Start URL is not as expected, got: {url}")
+    url = get_current_url()
+    if url != "http://default/":
+        raise Exception(f"Start URL is not as expected, got: {url}")
 
-  navigate("http://newurl")
+    navigate("http://newurl")
 
-  url = get_current_url()
-  if url != "http://newurl/":
-      raise Exception(f"New URL is not as expected, got: {url}")
+    url = get_current_url()
+    if url != "http://newurl/":
+        raise Exception(f"New URL is not as expected, got: {url}")
   '';
-  }
+}

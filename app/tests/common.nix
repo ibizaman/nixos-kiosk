@@ -25,24 +25,24 @@
     };
 
     config = {
-    networking.wireless.enable = lib.mkOverride 0 true;
-    networking.networkmanager.enable = true;
-    networking.interfaces.eth1.ipv4.addresses = lib.mkForce [
-      {
-        address = "192.168.1.3";
-        prefixLength = 24;
-      }
-    ];
-    services.vwifi = {
-      module = {
-        enable = true;
-        macPrefix = config.test.vwifi-client.mac;
+      networking.wireless.enable = lib.mkOverride 0 true;
+      networking.networkmanager.enable = true;
+      networking.interfaces.eth1.ipv4.addresses = lib.mkForce [
+        {
+          address = "192.168.1.3";
+          prefixLength = 24;
+        }
+      ];
+      services.vwifi = {
+        module = {
+          enable = true;
+          macPrefix = config.test.vwifi-client.mac;
+        };
+        client = {
+          enable = true;
+          serverAddress = "192.168.1.2";
+        };
       };
-      client = {
-        enable = true;
-        serverAddress = "192.168.1.2";
-      };
-    };
     };
   };
 }
