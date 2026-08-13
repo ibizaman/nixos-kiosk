@@ -9,11 +9,13 @@
 
   nixConfig = {
     extra-substituters = [
+      "https://nixos-kiosk.cachix.org"
       "https://ibizaman.cachix.org"
       "https://nixos-raspberrypi.cachix.org"
     ];
     extra-trusted-public-keys = [
       "ibizaman.cachix.org-1:Y8cRpAoeMfeeUp1jRG5KuwoVteZOQLG4HYkYyT4TC8k="
+      "nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0="
       "nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI="
     ];
   };
