@@ -61,7 +61,6 @@ in
       cfg.package
     ];
 
-    networking.wireless.enable = lib.mkOverride 0 true;
     networking.networkmanager.enable = true;
 
     # Always active
