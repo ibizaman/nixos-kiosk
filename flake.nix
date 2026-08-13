@@ -2,7 +2,6 @@
   description = "NixOS Kiosk";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
   };
@@ -23,7 +22,6 @@
   outputs =
     inputs@{
       self,
-      nixpkgs,
       flake-parts,
       nixos-raspberrypi,
     }:
@@ -143,7 +141,7 @@
           };
 
           nixosConfigurations = {
-            nixos-kiosk = nixpkgs.lib.nixosSystem {
+            nixos-kiosk = nixos-raspberrypi.inputs.nixpkgs.lib.nixosSystem {
               modules = [
                 {
                   nixpkgs.hostPlatform = "x86_64-linux";
