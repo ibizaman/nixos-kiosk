@@ -1,6 +1,6 @@
 module github.com/ibizaman/nixos-kiosk
 
-go 1.26.3
+go 1.25.0
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20260714215040-dc233986426f // indirect
