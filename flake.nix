@@ -155,7 +155,6 @@
               specialArgs = inputs;
               modules = [
                 {
-                  nixpkgs.buildPlatform = "x86_64-linux";
                   nixpkgs.hostPlatform = "armv7l-linux";
                 }
                 self.nixosModules.rpi-sd-filesystems
@@ -171,7 +170,6 @@
               specialArgs = inputs;
               modules = [
                 {
-                  nixpkgs.buildPlatform = "x86_64-linux";
                   nixpkgs.hostPlatform = "armv7l-linux";
                 }
                 self.nixosModules.rpi2-hw
@@ -187,7 +185,6 @@
               specialArgs = inputs;
               modules = [
                 {
-                  nixpkgs.buildPlatform = "x86_64-linux";
                   nixpkgs.hostPlatform = "aarch64-linux";
                 }
                 self.nixosModules.rpi-sd-filesystems
@@ -203,7 +200,6 @@
               specialArgs = inputs;
               modules = [
                 {
-                  nixpkgs.buildPlatform = "x86_64-linux";
                   nixpkgs.hostPlatform = "aarch64-linux";
                 }
                 self.nixosModules.rpi3-hw
