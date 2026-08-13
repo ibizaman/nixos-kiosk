@@ -127,6 +127,8 @@
                   ];
               };
 
+            fake-wifi = ./nix/fake-wifi.nix;
+
             nixos-kiosk = {
               imports = [
                 ./nix/wifi-setup.nix
@@ -148,6 +150,7 @@
                 }
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
+                self.nixosModules.fake-wifi
               ];
             };
 
