@@ -63,6 +63,9 @@ in
 
     networking.networkmanager.enable = true;
 
+    # Enables touchscreen
+    services.libinput.enable = true;
+
     # Always active
     systemd.services.nixos-kiosk = {
       description = "NixOS Kiosk";
