@@ -77,10 +77,28 @@ in
 
       serviceConfig = {
         ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --dns ${cfg.kioskIP}";
-        DynamicUser = true;
+        User = "kiosk-controller";
         Restart = "always";
       };
     };
+
+    users.users.kiosk-controller = {
+      isSystemUser = true;
+      group = "kiosk-controller";
+    };
+
+    users.groups.kiosk-controller = { };
+    # Allow kiosk-controller to manage WiFi
+    security.polkit.extraConfig = ''
+      polkit.addRule(function(action, subject) {
+        if (subject.user == "kiosk-controller") {
+          if (action.id == "org.freedesktop.NetworkManager.network-control" ||
+              action.id == "org.freedesktop.NetworkManager.settings.modify.system") {
+            return polkit.Result.YES;
+          }
+        }
+      });
+    '';
 
     users.users.nixos = {
       isNormalUser = true;
