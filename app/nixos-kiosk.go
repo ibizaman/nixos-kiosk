@@ -89,9 +89,15 @@ func main() {
 								Usage:   "filename where the PSK is stored",
 							},
 							&cli.StringFlag{
-								Name:    "dns",
-								Aliases: []string{"d"},
-								Usage:   "IP of the DNS server",
+								Name:    "ip",
+								Aliases: []string{"i"},
+								Usage:   "IP of the kiosk. DNS server will be set to this IP.",
+							},
+							&cli.Uint8Flag{
+								Name:    "prefix",
+								Aliases: []string{"p"},
+								Value:   24,
+								Usage:   "Prefix of the IP space managed by the kiosk.",
 							},
 						},
 						Action: networkManagerAddAP,
@@ -179,9 +185,15 @@ func main() {
 						Value:   9222,
 					},
 					&cli.StringFlag{
-						Name:    "dns",
-						Aliases: []string{"d"},
-						Usage:   "IP of the DNS server",
+						Name:    "ip",
+						Aliases: []string{"i"},
+						Usage:   "IP of the kiosk. DNS server will be set to this IP.",
+					},
+					&cli.Uint8Flag{
+						Name:    "prefix",
+						Aliases: []string{"p"},
+						Value:   24,
+						Usage:   "Prefix of the IP space managed by the kiosk.",
 					},
 				},
 				Action: startDaemon,
@@ -286,7 +298,8 @@ func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	id := cmd.StringArg("id")
 	ssid := cmd.StringArg("SSID")
-	dns := cmd.StringArg("dns")
+	ip := cmd.String("ip")
+	prefix := cmd.Uint8("prefix")
 	password := readPassword(cmd)
 
 	c, err := networkmanager.NewClient()
@@ -295,7 +308,7 @@ func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer c.Close()
 
-	res, err := c.CreateOrUpdateAP(id, ssid, password, dns)
+	res, err := c.CreateOrUpdateAP(id, ssid, password, ip, prefix)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -385,7 +398,8 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		SSID:       cmd.StringArg("SSID"),
 		ListenAddr: fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port")),
 		Password:   genPassword(),
-		DNSIP:      cmd.String("dns"),
+		IP:         cmd.String("ip"),
+		Prefix:     cmd.Uint8("prefix"),
 		SetupAction: func() {
 			navigateChan <- "http://setup.local/connect"
 		},
