@@ -299,6 +299,10 @@ func (c *Client) Disconnect(activeConnectionPath string) error {
 
 // CreateAP creates or updates a WiFi access poinrt profile
 func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, ip string, prefix uint8) (string, error) {
+	ipNet := net.ParseIP(ip)
+	if ipNet == nil {
+		return "", fmt.Errorf("CreateOrUpdateAP: ip '%s' is not valid", ip)
+	}
 	settings := map[string]map[string]dbus.Variant{
 		"connection": {
 			"type":        dbus.MakeVariant("802-11-wireless"),
@@ -321,7 +325,7 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, ip string,
 				},
 			}),
 			"dns": dbus.MakeVariant([]uint32{
-				binary.BigEndian.Uint32(net.ParseIP(ip).To4()),
+				binary.BigEndian.Uint32(ipNet.To4()),
 			}),
 			"ignore-auto-dns": dbus.MakeVariant(true),
 		},
