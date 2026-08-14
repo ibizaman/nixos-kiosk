@@ -40,10 +40,14 @@
           {
             self',
             inputs',
-            pkgs,
             system,
             ...
           }:
+          let
+            pkgs = import nixos-raspberrypi.inputs.nixpkgs {
+              inherit system;
+            };
+          in
           {
             formatter = pkgs.nixfmt-tree;
 
