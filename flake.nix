@@ -151,6 +151,9 @@
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
                 self.nixosModules.fake-wifi
+                {
+                  kiosk.chromiumKioskEnable = false;
+                }
               ];
             };
 

@@ -12,6 +12,14 @@ in
   options.kiosk = {
     enable = lib.mkEnableOption "NixOS Kiosk";
 
+    chromiumKioskEnable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Disable kiosk for debugging.
+      '';
+    };
+
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.callPackage ./package.nix { };
@@ -138,7 +146,7 @@ in
           ];
           text = ''
             chromium \
-              --kiosk \
+              ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
               --no-first-run \
               --disable-infobars \
               --noerrdialogs \
