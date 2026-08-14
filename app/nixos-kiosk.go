@@ -81,17 +81,16 @@ func main() {
 								Name:  "SSID",
 								Value: "Kiosk Setup",
 							},
+							&cli.StringArg{
+								Name:      "ip",
+								UsageText: "IP of the kiosk. DNS server will be set to this IP.",
+							},
 						},
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:    "psk-file",
 								Aliases: []string{"f"},
 								Usage:   "filename where the PSK is stored",
-							},
-							&cli.StringFlag{
-								Name:    "ip",
-								Aliases: []string{"i"},
-								Usage:   "IP of the kiosk. DNS server will be set to this IP.",
 							},
 							&cli.Uint8Flag{
 								Name:    "prefix",
@@ -298,7 +297,7 @@ func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	id := cmd.StringArg("id")
 	ssid := cmd.StringArg("SSID")
-	ip := cmd.String("ip")
+	ip := cmd.StringArg("ip")
 	prefix := cmd.Uint8("prefix")
 	password := readPassword(cmd)
 

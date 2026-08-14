@@ -99,7 +99,8 @@ pkgs.testers.runNixOSTest {
     print(kiosk.succeed("journalctl -u NetworkManager -b"))
     print(kiosk.succeed("iw dev"))
 
-    out = ap.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager addAP kiosk-setup-ap '{ssid}'")
+    ip = "192.168.1.2"
+    out = ap.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager addAP kiosk-setup-ap '{ssid}' '{ip}'")
     result = json.loads(out)
     print(result)
 
