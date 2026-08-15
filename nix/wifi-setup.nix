@@ -43,6 +43,12 @@ in
       default = "192.168.4.10,192.168.4.100,12h";
     };
 
+    fixedInsecureKioskPassword = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "12345678";
+    };
+
     normalURL = lib.mkOption {
       type = lib.types.str;
       default = "https://kiosk.tiserbox.com/view";
@@ -99,6 +105,11 @@ in
         User = "kiosk-controller";
         Restart = "always";
       };
+      environment = (
+        lib.optionalAttrs (cfg.fixedInsecureKioskPassword != null) {
+          NIXOS_KIOSK_PSK = cfg.fixedInsecureKioskPassword;
+        }
+      );
     };
 
     users.users.kiosk-controller = {

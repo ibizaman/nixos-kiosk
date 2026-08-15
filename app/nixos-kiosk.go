@@ -120,6 +120,11 @@ func main() {
 						Usage:   "port on which to listen to",
 						Value:   8000,
 					},
+					&cli.StringFlag{
+						Name:    "psk-file",
+						Aliases: []string{"f"},
+						Usage:   "filename where the PSK is stored",
+					},
 				},
 				Action: serve,
 			},
@@ -193,6 +198,11 @@ func main() {
 						Aliases: []string{"p"},
 						Value:   24,
 						Usage:   "Prefix of the IP space managed by the kiosk.",
+					},
+					&cli.StringFlag{
+						Name:    "psk-file",
+						Aliases: []string{"f"},
+						Usage:   "filename where the PSK is stored",
 					},
 				},
 				Action: startDaemon,
@@ -273,7 +283,10 @@ func networkManagerConnect(ctx context.Context, cmd *cli.Command) error {
 
 func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
-	password := readPassword(cmd)
+	password, err := readPassword(cmd)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	c, err := networkmanager.NewClient()
 	if err != nil {
@@ -299,7 +312,10 @@ func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
 	ip := cmd.StringArg("ip")
 	prefix := cmd.Uint8("prefix")
-	password := readPassword(cmd)
+	password, err := readPassword(cmd)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	c, err := networkmanager.NewClient()
 	if err != nil {
@@ -320,7 +336,7 @@ func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func readPassword(cmd *cli.Command) string {
+func readPassword(cmd *cli.Command) (string, error) {
 	var password string
 	if psk_file := cmd.String("psk-file"); psk_file != "" {
 		p, err := os.ReadFile(psk_file)
@@ -332,16 +348,20 @@ func readPassword(cmd *cli.Command) string {
 		password = os.Getenv("NIXOS_KIOSK_PSK")
 	}
 	if password == "" {
-		log.Fatalf("No password given with NIXOS_KIOSK_PSK env var or --psk-file")
+		return "", fmt.Errorf("No password given with NIXOS_KIOSK_PSK env var or --psk-file")
 	}
-	return password
+	return password, nil
 }
 
 func serve(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
 	port := cmd.Uint16("port")
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
-	password := genPassword()
+
+	password, err := readPassword(cmd)
+	if err != nil {
+		password = genPassword()
+	}
 
 	n, err := networkmanager.NewClient()
 	if err != nil {
