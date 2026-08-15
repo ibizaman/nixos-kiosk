@@ -132,6 +132,7 @@
               };
 
             fake-wifi = ./nix/fake-wifi.nix;
+            appliance = ./nix/appliance.nix;
 
             nixos-kiosk = {
               imports = [
@@ -154,6 +155,7 @@
                 }
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
+                self.nixosModules.appliance
                 self.nixosModules.fake-wifi
                 {
                   kiosk.chromiumKioskEnable = false;
@@ -171,6 +173,7 @@
                 self.nixosModules.rpi2-hw
                 self.nixosModules.rpi-hdmi
                 self.nixosModules.rpi-common
+                self.nixosModules.appliance
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
               ];
@@ -186,6 +189,7 @@
                 self.nixosModules.rpi-hdmi
                 nixos-raspberrypi.nixosModules.sd-image
                 self.nixosModules.rpi-common
+                self.nixosModules.appliance
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
               ];
@@ -201,6 +205,7 @@
                 self.nixosModules.rpi3-hw
                 self.nixosModules.rpi-hdmi
                 self.nixosModules.rpi-common
+                self.nixosModules.appliance
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
               ];
@@ -216,6 +221,7 @@
                 self.nixosModules.rpi-hdmi
                 nixos-raspberrypi.nixosModules.sd-image
                 self.nixosModules.rpi-common
+                self.nixosModules.appliance
                 self.nixosModules.nixos-kiosk
                 self.nixosModules.magic-frame
               ];
