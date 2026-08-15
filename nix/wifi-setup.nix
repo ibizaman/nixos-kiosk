@@ -20,6 +20,14 @@ in
       '';
     };
 
+    showJournal = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Replace chromium with journalctl output
+      '';
+    };
+
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.callPackage ./package.nix { };
@@ -129,7 +137,10 @@ in
         "video"
         "render"
         "input"
-      ];
+      ] ++ (lib.optionals cfg.showJournal [
+        # To see all systemd logs
+        "wheel"
+      ]);
     };
     users.groups.frame = { };
 
@@ -141,10 +152,14 @@ in
       program = lib.getExe (
         pkgs.writeShellApplication {
           name = "kiosk-chromium-setup";
-          runtimeInputs = [
+          runtimeInputs = if cfg.showJournal then [
+            pkgs.foot
+          ] else [
             pkgs.chromium
           ];
-          text = ''
+          text = if cfg.showJournal then ''
+            foot -e journalctl -f -n 100000 -o short-monotonic
+          '' else ''
             chromium \
               ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
               --no-first-run \
