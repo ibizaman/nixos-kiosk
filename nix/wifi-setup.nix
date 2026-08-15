@@ -148,7 +148,8 @@ in
         "video"
         "render"
         "input"
-      ] ++ (lib.optionals cfg.showJournal [
+      ]
+      ++ (lib.optionals cfg.showJournal [
         # To see all systemd logs
         "wheel"
       ]);
@@ -163,23 +164,32 @@ in
       program = lib.getExe (
         pkgs.writeShellApplication {
           name = "kiosk-chromium-setup";
-          runtimeInputs = if cfg.showJournal then [
-            pkgs.foot
-          ] else [
-            pkgs.chromium
-          ];
-          text = if cfg.showJournal then ''
-            foot -e journalctl -f -n 100000 -o short-monotonic
-          '' else ''
-            chromium \
-              ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
-              --no-first-run \
-              --disable-infobars \
-              --noerrdialogs \
-              --remote-debugging-address=127.0.0.1 \
-              --remote-debugging-port=${toString cfg.chromiumPort} \
-              http://${cfg.setupURL}/connect
-          '';
+          runtimeInputs =
+            if cfg.showJournal then
+              [
+                pkgs.foot
+              ]
+            else
+              [
+                pkgs.chromium
+              ];
+          text =
+            if cfg.showJournal then
+              ''
+                foot -e journalctl -f -n 100000 -o short-monotonic
+              ''
+            else
+              ''
+                chromium \
+                  ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
+                  --no-first-run \
+                  --hide-cursor \
+                  --disable-infobars \
+                  --noerrdialogs \
+                  --remote-debugging-address=127.0.0.1 \
+                  --remote-debugging-port=${toString cfg.chromiumPort} \
+                  http://${cfg.setupURL}/connect
+              '';
         }
       );
     };
