@@ -194,6 +194,7 @@ in
       );
     };
 
+    services.resolved.enable = false;
     services.dnsmasq = {
       enable = true;
 
