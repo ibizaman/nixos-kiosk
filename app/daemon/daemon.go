@@ -3,50 +3,23 @@ package daemon
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/ibizaman/nixos-kiosk/networkmanager"
-	"github.com/ibizaman/nixos-kiosk/web"
 )
 
 type Config struct {
 	SSID         string
-	ListenAddr   string
 	Password     string
 	IP           string
 	Prefix       uint8
-	SetupAction  func()
-	NormalAction func()
+	SetupAction  func(initialSetup bool)
+	NormalAction func(ssid string)
 }
 
-func Start(ctx context.Context, c Config) error {
-	n, err := networkmanager.NewClient()
-	if err != nil {
-		log.Fatalf("could not initialize network manager: %s", err)
-	}
-	defer n.Close()
-
-	var wg sync.WaitGroup
-
-	errChan := make(chan error)
-
-	wg.Add(2)
-	defer wg.Wait()
-
-	go func() {
-		errChan <- web.Start(ctx, n, c.ListenAddr, c.SSID, c.Password)
-		wg.Done()
-	}()
-
-	go func() {
-		c.watcher(ctx, n, "kiosk")
-		wg.Done()
-	}()
-
-	return nil
+func Start(ctx context.Context, n *networkmanager.Client, c Config) {
+	c.watcher(ctx, n, "kiosk")
 }
 
 func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID string) {
@@ -63,22 +36,21 @@ func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID
 			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
 			continue
 		}
+		savedConnection, err := n.GetSavedConnectionByID(profileID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
+			continue
+		}
+
 		if activeConnection != nil && activeConnection.IsActivatingOrActivated() {
-			log.Println(activeConnection)
 			lastActiveConnection = time.Now().UTC()
 			if !lastStateIsNormal {
 				fmt.Printf("watcher: entering normal mode\n")
-				c.NormalAction()
+				c.NormalAction(savedConnection.SSID)
 				lastStateIsNormal = true
 			}
 
 			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		savedConnection, err := n.GetSavedConnectionByID(profileID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
 			continue
 		}
 
@@ -94,9 +66,9 @@ func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID
 				continue
 			}
 
-			if lastStateIsNormal {
+			if lastStateIsNormal || lastActiveConnection.Equal(time.Time{}) {
 				fmt.Printf("watcher: entering setup mode\n")
-				c.SetupAction()
+				c.SetupAction(lastActiveConnection.Equal(time.Time{}))
 				lastStateIsNormal = false
 			}
 		}

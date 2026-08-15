@@ -178,6 +178,12 @@ button:disabled:active {
 
 <h1>Connect This Device to WiFi</h1>
 
+{{ if (eq .ConnectionStatus "success") }}
+<p class="info">
+  I am already connected to your wifi.
+</p>
+{{ end }}
+
 <p class="description">
   Enter the name and password of your WiFi network to connect this device.
 </p>
