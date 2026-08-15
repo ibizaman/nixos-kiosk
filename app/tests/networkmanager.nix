@@ -1,5 +1,6 @@
 {
   pkgs,
+  lib,
   nixos-kiosk,
   ...
 }:
@@ -47,6 +48,7 @@ pkgs.testers.runNixOSTest {
 
   testScript = ''
     import json
+    from time import sleep
 
     def find_home_wifi(ssid):
         out = kiosk.succeed("nixos-kiosk network-manager profiles")
@@ -85,12 +87,14 @@ pkgs.testers.runNixOSTest {
 
     ssid = "Kiosk Setup"
 
-    home_wifi = find_home_wifi(ssid)
-    if home_wifi:
-        raise Exception("Should not already find home-wifi profile")
+    with subtest(f"Find home wifi {ssid}"):
+        home_wifi = find_home_wifi(ssid)
+        if home_wifi:
+            raise Exception("Should not already find home-wifi profile")
 
-    if is_home_wifi_active(ssid):
-        raise Exception("home-wifi should not be activated yet")
+    with subtest("Home wifi should not be activated"):
+        if is_home_wifi_active(ssid):
+            raise Exception("home-wifi should not be activated yet")
 
     print(kiosk.succeed("busctl --list"))
     print(kiosk.succeed("ip link show wlan0"))
@@ -101,18 +105,28 @@ pkgs.testers.runNixOSTest {
 
     ip = "192.168.1.2"
     out = ap.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager addAP kiosk-setup-ap '{ssid}' '{ip}'")
-    result = json.loads(out)
-    print(result)
+    path = json.loads(out)
+    print(path)
+    out = ap.succeed(f"nixos-kiosk network-manager connect {path}")
+    print(out)
+
+    sleep(5)
 
     out = kiosk.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager add '{ssid}'")
-    result = json.loads(out)
-    print(result)
+    path = json.loads(out)
+    print(path)
+    out = ap.succeed(f"nixos-kiosk network-manager connect {path}")
+    print(out)
 
-    home_wifi = find_home_wifi(ssid)
-    if not home_wifi:
-        raise Exception("Could not find home-wifi profile")
+    sleep(5)
 
-    if not is_home_wifi_active(ssid):
-        raise Exception("home-wifi should be activated")
+    with subtest(f"Find home wifi {ssid}"):
+        home_wifi = find_home_wifi(ssid)
+        if not home_wifi:
+            raise Exception("Could not find home-wifi profile")
+
+    with subtest("Home wifi should be activated"):
+        if not is_home_wifi_active(ssid):
+            raise Exception("home-wifi should be activated")
   '';
 }

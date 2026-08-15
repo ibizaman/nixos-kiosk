@@ -20,13 +20,28 @@ import (
 var htmlFiles embed.FS
 var htmlTemplates = template.Must(template.ParseFS(htmlFiles, "*.html"))
 
-func Start(ctx context.Context, nm *networkmanager.Client, addr string, ssid string, psk string) error {
+type ConnectionStatus string
+
+const ConnectionStatusInitial ConnectionStatus = "initial"
+const ConnectionStatusError ConnectionStatus = "error"
+const ConnectionStatusSuccess ConnectionStatus = "success"
+
+type LiveData struct {
+	ConnectionStatus chan<- ConnectionStatus
+}
+
+func Start(ctx context.Context, nm *networkmanager.Client, addr string, hotspotSSID string, hotspotPSK string) (LiveData, <-chan error) {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/connect", qrcodePage(ssid, psk))
-	mux.HandleFunc("/wifi.png", qrcodeImage(ssid, psk))
+	connectionStatusChan := make(chan ConnectionStatus)
+	ld := LiveData{
+		ConnectionStatus: connectionStatusChan,
+	}
 
-	mux.HandleFunc("/", setupPage(nm))
+	mux.HandleFunc("/connect", qrcodePage(connectionStatusChan, hotspotSSID, hotspotPSK))
+	mux.HandleFunc("/wifi.png", qrcodeImage(hotspotSSID, hotspotPSK))
+
+	mux.HandleFunc("/", setupPage(nm, connectionStatusChan))
 	mux.HandleFunc("/status", setupPollPage(nm))
 
 	server := &http.Server{
@@ -38,11 +53,20 @@ func Start(ctx context.Context, nm *networkmanager.Client, addr string, ssid str
 
 	log.Printf("listening on %s\n", addr)
 
-	err := serve(ctx, server)
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-	return err
+	errChan := make(chan error)
+
+	go func() {
+		err := serve(ctx, server)
+		if errors.Is(err, http.ErrServerClosed) {
+			errChan <- nil
+		}
+		if errors.Is(err, context.Canceled) {
+			errChan <- nil
+		}
+		errChan <- err
+	}()
+
+	return ld, errChan
 }
 
 func serve(ctx context.Context, srv *http.Server) error {
@@ -69,16 +93,24 @@ func serve(ctx context.Context, srv *http.Server) error {
 }
 
 type Data struct {
-	SSID string
-	PSK  string
+	ConnectionStatus ConnectionStatus
+	HotspotSSID      string
+	HotspotPSK       string
 }
 
-func qrcodePage(ssid string, psk string) http.HandlerFunc {
+func qrcodePage(connectionStatusChan <-chan ConnectionStatus, hotspotSSID string, hostspotPSK string) http.HandlerFunc {
+	var connectionStatus ConnectionStatus
+	go func() {
+		for connectionStatus = range connectionStatusChan {
+		}
+	}()
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s: [%s] %s", r.RemoteAddr, r.Method, r.RequestURI)
 		htmlTemplates.ExecuteTemplate(w, "connect.html", Data{
-			SSID: ssid,
-			PSK:  psk,
+			ConnectionStatus: connectionStatus,
+			HotspotSSID:      hotspotSSID,
+			HotspotPSK:       hostspotPSK,
 		})
 	}
 }
@@ -111,6 +143,7 @@ func qrcodeImage(ssid string, psk string) http.HandlerFunc {
 type SetupData struct {
 	AccessPoints     []networkmanager.AccessPoint
 	SavedConnections []networkmanager.SavedConnection
+	ConnectionStatus ConnectionStatus
 	Message          string
 	Error            SetupFormResponse
 }
@@ -121,7 +154,13 @@ type SetupFormResponse struct {
 	Error  string `json:"error"`
 }
 
-func setupPage(nm *networkmanager.Client) http.HandlerFunc {
+func setupPage(nm *networkmanager.Client, connectionStatusChan <-chan ConnectionStatus) http.HandlerFunc {
+	var connectionStatus ConnectionStatus
+	go func() {
+		for connectionStatus = range connectionStatusChan {
+		}
+	}()
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s: [%s] %s", r.RemoteAddr, r.Method, r.RequestURI)
 		if r.Method == "POST" {
@@ -192,6 +231,7 @@ func setupPage(nm *networkmanager.Client) http.HandlerFunc {
 		data := SetupData{
 			AccessPoints:     accessPoints,
 			SavedConnections: savedConnections,
+			ConnectionStatus: connectionStatus,
 		}
 
 		htmlTemplates.ExecuteTemplate(w, "setup.html", data)

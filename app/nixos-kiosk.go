@@ -372,7 +372,8 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	return web.Start(ctx, n, addr, ssid, password)
+	_, errChan := web.Start(ctx, n, addr, ssid, password)
+	return <-errChan
 }
 
 func chromiumGetURL(ctx context.Context, cmd *cli.Command) error {
@@ -413,27 +414,52 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	go navigator(ctx, "127.0.0.1", cmd.Uint16("chromium-port"), navigateChan)
 
-	c := daemon.Config{
-		SSID:       cmd.StringArg("SSID"),
-		ListenAddr: fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port")),
-		Password:   genPassword(),
-		IP:         cmd.String("ip"),
-		Prefix:     cmd.Uint8("prefix"),
-		SetupAction: func() {
-			navigateChan <- "http://setup.local/connect"
-		},
-		NormalAction: func() {
-			navigateChan <- cmd.StringArg("URL")
-		},
+	n, err := networkmanager.NewClient()
+	if err != nil {
+		log.Fatalf("could not initialize network manager: %s", err)
 	}
+	defer n.Close()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	ssid := cmd.StringArg("SSID")
+	password, err := readPassword(cmd)
+	if err != nil {
+		password = genPassword()
+	}
+
+	listenAddr := fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port"))
+	liveData, errChan := web.Start(ctx, n, listenAddr, ssid, password)
+	go func() {
+		err := <-errChan
+		if err != nil {
+			log.Printf("web: error: %s", err)
+		}
+	}()
+
 	defer func() {
 		close(navigateChan)
 	}()
-	return daemon.Start(ctx, c)
+
+	c := daemon.Config{
+		SSID:     ssid,
+		Password: password,
+		IP:       cmd.String("ip"),
+		Prefix:   cmd.Uint8("prefix"),
+		SetupAction: func(initialSetup bool) {
+			liveData.ConnectionStatus <- web.ConnectionStatusError
+			navigateChan <- "http://setup.local/connect"
+		},
+		NormalAction: func(ssid string) {
+			liveData.ConnectionStatus <- web.ConnectionStatusSuccess
+			navigateChan <- cmd.StringArg("URL")
+		},
+	}
+	liveData.ConnectionStatus <- web.ConnectionStatusInitial
+
+	daemon.Start(ctx, n, c)
+	return nil
 }
 
 var letters = []rune("123456789")
