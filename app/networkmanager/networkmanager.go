@@ -326,6 +326,7 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, ip string,
 			"dns-data": dbus.MakeVariant([]string{
 				ip,
 			}),
+			"gateway":         dbus.MakeVariant(ip),
 			"ignore-auto-dns": dbus.MakeVariant(true),
 		},
 		"ipv6": {
