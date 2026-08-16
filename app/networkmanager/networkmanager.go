@@ -1,7 +1,6 @@
 package networkmanager
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -324,8 +323,8 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, ip string,
 					"prefix":  dbus.MakeVariant(uint32(prefix)),
 				},
 			}),
-			"dns": dbus.MakeVariant([]uint32{
-				binary.BigEndian.Uint32(ipNet.To4()),
+			"dns-data": dbus.MakeVariant([]string{
+				ip,
 			}),
 			"ignore-auto-dns": dbus.MakeVariant(true),
 		},
