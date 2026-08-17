@@ -195,6 +195,8 @@ in
     };
 
     services.resolved.enable = false;
+    networking.firewall.allowedUDPPorts = [ 53 67 ];
+    networking.firewall.allowedTCPPorts = [ 53 80 443 ];
     services.dnsmasq = {
       enable = true;
 
