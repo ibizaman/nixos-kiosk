@@ -28,6 +28,14 @@ in
       '';
     };
 
+    dnsmasqDebug = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable debug output in dnsmasq
+      '';
+    };
+
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.callPackage ./package.nix { };
@@ -201,6 +209,8 @@ in
       enable = true;
 
       settings = {
+        log-dhcp = cfg.dnsmasqDebug;
+        log-queries = cfg.dnsmasqDebug;
         # interface = "wlan0";
         bind-interfaces = true;
         domain-needed = true;
