@@ -18,11 +18,18 @@ type Config struct {
 	NormalAction func(ssid string)
 }
 
-func Start(ctx context.Context, n *networkmanager.Client, c Config) {
+func Start(ctx context.Context, n NetworkManager, c Config) {
 	c.watcher(ctx, n, "kiosk")
 }
 
-func (c Config) watcher(ctx context.Context, n *networkmanager.Client, profileID string) {
+type NetworkManager interface {
+	GetActiveConnectionByID(id string) (*networkmanager.ActiveConnection, error)
+	GetSavedConnectionByID(id string) (*networkmanager.SavedConnection, error)
+	CreateOrUpdateAP(id string, ssid string, psk string, ip string, prefix uint8) (string, error)
+	Connect(connectionPath string) (*networkmanager.ConnectResult, error)
+}
+
+func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string) {
 	var lastActiveConnection time.Time
 	var lastStateIsNormal bool
 
