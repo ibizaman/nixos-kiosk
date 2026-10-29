@@ -53,14 +53,19 @@
 
             packages.nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
 
-            checks = {
-              app-networkmanager = pkgs.callPackage ./app/tests/networkmanager.nix {
-                inherit (self'.packages) nixos-kiosk;
+            checks =
+              let
+                mkCheck =
+                  module:
+                  pkgs.callPackage module {
+                    inherit (self'.packages) nixos-kiosk;
+                  };
+              in
+              {
+                app-networkmanager = mkCheck ./app/tests/networkmanager.nix;
+                app-chromium = mkCheck ./app/tests/chromium.nix;
+                app-daemon = mkCheck ./app/tests/daemon.nix;
               };
-              app-chromium = pkgs.callPackage ./app/tests/chromium.nix {
-                inherit (self'.packages) nixos-kiosk;
-              };
-            };
           };
 
         flake = {
@@ -216,6 +221,8 @@
               modules = [
                 {
                   nixpkgs.hostPlatform = "aarch64-linux";
+                  kiosk.showJournal = true;
+                  kiosk.fixedInsecureKioskPassword = "12345678";
                 }
                 self.nixosModules.rpi3-hw
                 self.nixosModules.rpi-hdmi
