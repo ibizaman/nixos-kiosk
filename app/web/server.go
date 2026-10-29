@@ -45,7 +45,7 @@ func Start(ctx context.Context, nm *networkmanager.Client, addr string, hotspotS
 	mux.HandleFunc("/status", setupPollPage(nm))
 
 	server := &http.Server{
-		Addr:         ":8000",
+		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 60 * time.Second,
