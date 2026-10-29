@@ -16,6 +16,26 @@ type Config struct {
 	Prefix       uint8
 	SetupAction  func(initialSetup bool)
 	NormalAction func(ssid string)
+
+	// PollInterval controls how often the watcher checks connection state.
+	// Zero defaults to 5 seconds.
+	PollInterval time.Duration
+	// now returns the current time. Nil defaults to time.Now().UTC.
+	now func() time.Time
+}
+
+func (c Config) pollInterval() time.Duration {
+	if c.PollInterval == 0 {
+		return 5 * time.Second
+	}
+	return c.PollInterval
+}
+
+func (c Config) currentTime() time.Time {
+	if c.now == nil {
+		return time.Now().UTC()
+	}
+	return c.now()
 }
 
 func Start(ctx context.Context, n NetworkManager, c Config) {
@@ -34,6 +54,7 @@ func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string)
 	apProfileID := profileID + "-ap"
 	var lastActiveConnection time.Time
 	var lastStateIsNormal bool
+	var lastStateIsSetup bool // tracks whether we have already called SetupAction
 
 	for {
 		if ctx.Err() != nil {
@@ -43,45 +64,53 @@ func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string)
 		activeConnection, err := n.GetActiveConnectionByID(profileID)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
+			time.Sleep(c.pollInterval())
 			continue
 		}
 		savedConnection, err := n.GetSavedConnectionByID(profileID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "watcher: could not list active connections: %s\n", err)
+			fmt.Fprintf(os.Stderr, "watcher: could not list saved connections: %s\n", err)
+			time.Sleep(c.pollInterval())
 			continue
 		}
 
 		if activeConnection != nil && activeConnection.IsActivatingOrActivated() {
-			lastActiveConnection = time.Now().UTC()
+			lastActiveConnection = c.currentTime()
 			if !lastStateIsNormal {
 				fmt.Printf("watcher: entering normal mode\n")
 				c.NormalAction(savedConnection.SSID)
 				lastStateIsNormal = true
+				lastStateIsSetup = false
 			}
 
-			time.Sleep(5 * time.Second)
+			time.Sleep(c.pollInterval())
 			continue
 		}
 
-		if savedConnection == nil || time.Now().UTC().Sub(lastActiveConnection) > time.Minute {
+		if savedConnection == nil || c.currentTime().Sub(lastActiveConnection) > time.Minute {
 			path, err := n.CreateOrUpdateAP(apProfileID, c.SSID, c.Password, c.IP, c.Prefix)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "watcher: could not create Access Point: %s\n", err)
+				time.Sleep(c.pollInterval())
 				continue
 			}
 
 			if _, err := n.Connect(path); err != nil {
 				fmt.Fprintf(os.Stderr, "watcher: could not start Access Point: %s\n", err)
+				time.Sleep(c.pollInterval())
 				continue
 			}
 
-			if lastStateIsNormal || lastActiveConnection.Equal(time.Time{}) {
+			// Call SetupAction only on transitions: normal→setup or initial startup.
+			if lastStateIsNormal || !lastStateIsSetup {
+				initialSetup := lastActiveConnection.Equal(time.Time{})
 				fmt.Printf("watcher: entering setup mode\n")
-				c.SetupAction(lastActiveConnection.Equal(time.Time{}))
+				c.SetupAction(initialSetup)
 				lastStateIsNormal = false
+				lastStateIsSetup = true
 			}
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(c.pollInterval())
 	}
 }
