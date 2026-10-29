@@ -30,6 +30,8 @@ type NetworkManager interface {
 }
 
 func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string) {
+	// AP uses a distinct profile ID so it never appears as the WiFi client connection.
+	apProfileID := profileID + "-ap"
 	var lastActiveConnection time.Time
 	var lastStateIsNormal bool
 
@@ -62,7 +64,7 @@ func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string)
 		}
 
 		if savedConnection == nil || time.Now().UTC().Sub(lastActiveConnection) > time.Minute {
-			path, err := n.CreateOrUpdateAP(profileID, c.SSID, c.Password, c.IP, c.Prefix)
+			path, err := n.CreateOrUpdateAP(apProfileID, c.SSID, c.Password, c.IP, c.Prefix)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "watcher: could not create Access Point: %s\n", err)
 				continue
