@@ -2,6 +2,11 @@
 
 Create a Kiosk appliance with NixOS.
 
+When no WiFi is configured the device acts as an access point and
+displays a setup form where you can enter your network credentials:
+
+![WiFi setup form](screenshots/setup-form.png)
+
 ## Setup
 
 1. Build the sdcard image:

@@ -53,6 +53,13 @@
 
             packages.nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
 
+            packages.screenshot-setup-form = pkgs.runCommand "screenshot-setup-form" {
+              test = self'.checks.screenshot-setup-form;
+            } ''
+              mkdir $out
+              cp $test/setup-form.png $out/setup-form.png
+            '';
+
             checks =
               let
                 mkCheck =
@@ -65,6 +72,7 @@
                 app-networkmanager = mkCheck ./app/tests/networkmanager.nix;
                 app-chromium = mkCheck ./app/tests/chromium.nix;
                 app-daemon = mkCheck ./app/tests/daemon.nix;
+                screenshot-setup-form = mkCheck ./nix/screenshot.nix;
               };
           };
 
