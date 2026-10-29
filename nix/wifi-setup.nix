@@ -109,7 +109,7 @@ in
       ];
 
       serviceConfig = {
-        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP}";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --setup-url ${cfg.setupURL}";
         User = "kiosk-controller";
         Restart = "always";
       };
@@ -212,7 +212,7 @@ in
         log-dhcp = cfg.dnsmasqDebug;
         log-queries = cfg.dnsmasqDebug;
         # interface = "wlan0";
-        bind-interfaces = true;
+        # bind-interfaces = true;
         domain-needed = true;
         no-resolv = true;
 

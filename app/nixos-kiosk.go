@@ -204,6 +204,12 @@ func main() {
 						Aliases: []string{"f"},
 						Usage:   "filename where the PSK is stored",
 					},
+					&cli.StringFlag{
+						Name:    "setup-url",
+						Aliases: []string{"u"},
+						Usage:   "hostname of the setup page (e.g. setup.kiosk)",
+						Value:   "setup.kiosk",
+					},
 				},
 				Action: startDaemon,
 			},
@@ -410,6 +416,9 @@ func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 }
 
 func startDaemon(ctx context.Context, cmd *cli.Command) error {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	navigateChan := make(chan string)
 
 	go navigator(ctx, "127.0.0.1", cmd.Uint16("chromium-port"), navigateChan)
@@ -419,9 +428,6 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		log.Fatalf("could not initialize network manager: %s", err)
 	}
 	defer n.Close()
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
 
 	ssid := cmd.StringArg("SSID")
 	password, err := readPassword(cmd)
@@ -442,6 +448,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		close(navigateChan)
 	}()
 
+	setupURL := fmt.Sprintf("http://%s/connect", cmd.String("setup-url"))
 	c := daemon.Config{
 		SSID:     ssid,
 		Password: password,
@@ -449,7 +456,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		Prefix:   cmd.Uint8("prefix"),
 		SetupAction: func(initialSetup bool) {
 			liveData.ConnectionStatus <- web.ConnectionStatusError
-			navigateChan <- "http://setup.local/connect"
+			navigateChan <- setupURL
 		},
 		NormalAction: func(ssid string) {
 			liveData.ConnectionStatus <- web.ConnectionStatusSuccess
@@ -476,47 +483,47 @@ func genPassword() string {
 	return string(b)
 }
 
-func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan string) func() {
+func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan string) {
 	var url string
 	var gotNew bool
 
-	return func() {
-		go func() {
-			for {
-				newURL, ok := <-navigateChan
-				if !ok {
-					return
-				}
-
-				if newURL != url {
-					url = newURL
-					gotNew = true
-					fmt.Fprintf(os.Stderr, "navigator: will navigate to new url: %s", url)
-				}
-			}
-		}()
-
+	go func() {
 		for {
-			if ctx.Err() != nil {
+			newURL, ok := <-navigateChan
+			if !ok {
 				return
 			}
 
-			if gotNew {
-				cClient := chromium.NewClient(ip, port)
-
-				close, err := cClient.Connect()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s", err)
-				}
-				defer close()
-
-				if err := cClient.Navigate(url); err != nil {
-					fmt.Fprintf(os.Stderr, "navigator: could navigate to new url: %s", err)
-				}
-				gotNew = false
+			if newURL != url {
+				url = newURL
+				gotNew = true
+				fmt.Fprintf(os.Stderr, "navigator: will navigate to new url: %s", url)
 			}
-
-			time.Sleep(5 * time.Second)
 		}
+	}()
+
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+
+		if gotNew {
+			cClient := chromium.NewClient(ip, port)
+
+			close, err := cClient.Connect()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s", err)
+				continue
+			}
+			defer close()
+
+			if err := cClient.Navigate(url); err != nil {
+				fmt.Fprintf(os.Stderr, "navigator: could not navigate to new url: %s", err)
+				continue
+			}
+			gotNew = false
+		}
+
+		time.Sleep(5 * time.Second)
 	}
 }
