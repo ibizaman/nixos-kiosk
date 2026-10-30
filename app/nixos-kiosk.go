@@ -125,6 +125,16 @@ func main() {
 						Aliases: []string{"f"},
 						Usage:   "filename where the PSK is stored",
 					},
+					&cli.StringFlag{
+						Name:  "settings-path",
+						Usage: "path to the settings JSON file",
+						Value: "/var/lib/nixos-kiosk/settings.json",
+					},
+					&cli.StringFlag{
+						Name:  "hostname",
+						Usage: "mDNS hostname for the kiosk (without .local)",
+						Value: "magic-frame",
+					},
 				},
 				Action: serve,
 			},
@@ -205,10 +215,14 @@ func main() {
 						Usage:   "filename where the PSK is stored",
 					},
 					&cli.StringFlag{
-						Name:    "setup-url",
-						Aliases: []string{"u"},
-						Usage:   "hostname of the setup page (e.g. setup.kiosk)",
-						Value:   "setup.kiosk",
+						Name:  "hostname",
+						Usage: "mDNS hostname for the kiosk (without .local)",
+						Value: "magic-frame",
+					},
+					&cli.StringFlag{
+						Name:  "settings-path",
+						Usage: "path to the settings JSON file",
+						Value: "/var/lib/nixos-kiosk/settings.json",
 					},
 				},
 				Action: startDaemon,
@@ -378,7 +392,15 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	_, errChan := web.Start(ctx, n, addr, ssid, password)
+	_, errChan := web.Start(ctx, n, web.ServerConfig{
+		Addr:         addr,
+		HotspotSSID:  ssid,
+		HotspotPSK:   password,
+		SettingsPath: cmd.String("settings-path"),
+		DefaultSettings: web.Settings{
+			MDNSHostname: cmd.String("hostname"),
+		},
+	})
 	return <-errChan
 }
 
@@ -436,7 +458,15 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	listenAddr := fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port"))
-	liveData, errChan := web.Start(ctx, n, listenAddr, ssid, password)
+	liveData, errChan := web.Start(ctx, n, web.ServerConfig{
+		Addr:        listenAddr,
+		HotspotSSID: ssid,
+		HotspotPSK:  password,
+		SettingsPath: cmd.String("settings-path"),
+		DefaultSettings: web.Settings{
+			MDNSHostname: cmd.String("hostname"),
+		},
+	})
 	go func() {
 		err := <-errChan
 		if err != nil {
@@ -448,7 +478,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		close(navigateChan)
 	}()
 
-	setupURL := fmt.Sprintf("http://%s/connect", cmd.String("setup-url"))
+	setupURL := fmt.Sprintf("http://%s.local/manage", cmd.String("hostname"))
 	c := daemon.Config{
 		SSID:     ssid,
 		Password: password,
