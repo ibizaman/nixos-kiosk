@@ -33,6 +33,7 @@
         systems = [
           "x86_64-linux"
           "aarch64-linux"
+          "armv7l-linux"
           "aarch64-darwin"
         ];
 
@@ -47,20 +48,38 @@
             pkgs = import nixos-raspberrypi.inputs.nixpkgs {
               inherit system;
             };
+            lib = pkgs.lib;
+
+            # For each sdImage whose nixosConfiguration targets this system,
+            # expose it as packages.<system>.sdimage-<suffix>.
+            # Convention: sdImages.<name> <-> nixosConfigurations.<name>-image.
+            sdImagePackages = lib.mapAttrs' (
+              name: image:
+              lib.nameValuePair
+                ("sdimage-" + lib.removePrefix "nixos-kiosk-" name)
+                image
+            ) (lib.filterAttrs (name: _:
+              self.nixosConfigurations."${name}-image".config.nixpkgs.hostPlatform == system
+            ) self.sdImages);
           in
           {
             formatter = pkgs.nixfmt-tree;
 
-            packages.nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
+            packages =
+              {
+                nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
+              }
+              // lib.optionalAttrs (system == "x86_64-linux") {
+                screenshot-setup-form = pkgs.runCommand "screenshot-setup-form" {
+                  test = self'.checks.screenshot-setup-form;
+                } ''
+                  mkdir $out
+                  cp $test/setup-form.png $out/setup-form.png
+                '';
+              }
+              // sdImagePackages;
 
-            packages.screenshot-setup-form = pkgs.runCommand "screenshot-setup-form" {
-              test = self'.checks.screenshot-setup-form;
-            } ''
-              mkdir $out
-              cp $test/setup-form.png $out/setup-form.png
-            '';
-
-            checks =
+            checks = lib.optionalAttrs pkgs.stdenv.isLinux (
               let
                 mkCheck =
                   module:
@@ -73,7 +92,8 @@
                 app-chromium = mkCheck ./app/tests/chromium.nix;
                 app-daemon = mkCheck ./app/tests/daemon.nix;
                 screenshot-setup-form = mkCheck ./nix/screenshot.nix;
-              };
+              }
+            );
           };
 
         flake = {
