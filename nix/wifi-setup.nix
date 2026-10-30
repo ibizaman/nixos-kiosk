@@ -77,12 +77,13 @@ in
       default = "Kiosk Setup";
     };
 
-    setupURL = lib.mkOption {
+    hostname = lib.mkOption {
       type = lib.types.str;
+      default = "magic-frame";
       description = ''
-        It's best to avoid .local domain as this is used by mDNS.
+        mDNS hostname for the kiosk. The device will be reachable at
+        <hostname>.local on the network. Also used as the nginx virtual host.
       '';
-      default = "setup.kiosk";
     };
   };
   config = lib.mkIf cfg.enable {
@@ -95,6 +96,10 @@ in
 
     # Enables touchscreen
     services.libinput.enable = true;
+
+    systemd.tmpfiles.rules = [
+      "d /var/lib/nixos-kiosk 0750 kiosk-controller kiosk-controller -"
+    ];
 
     # Always active
     systemd.services.nixos-kiosk = {
@@ -109,7 +114,7 @@ in
       ];
 
       serviceConfig = {
-        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --setup-url ${cfg.setupURL}";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json";
         User = "kiosk-controller";
         Restart = "always";
       };
@@ -164,6 +169,16 @@ in
     };
     users.groups.frame = { };
 
+    services.avahi = {
+      enable = true;
+      hostName = cfg.hostname;
+      nssmdns4 = true;
+      publish = {
+        enable = true;
+        addresses = true;
+      };
+    };
+
     services.cage = {
       enable = true;
 
@@ -196,7 +211,7 @@ in
                   --noerrdialogs \
                   --remote-debugging-address=127.0.0.1 \
                   --remote-debugging-port=${toString cfg.chromiumPort} \
-                  http://${cfg.setupURL}/connect
+                  http://${cfg.hostname}.local/manage
               '';
         }
       );
@@ -260,11 +275,11 @@ in
 
         locations."/" = {
           extraConfig = ''
-            return 301 http://${cfg.setupURL};
+            return 301 http://${cfg.hostname}.local;
           '';
         };
       };
-      virtualHosts."${cfg.setupURL}" = {
+      virtualHosts."${cfg.hostname}.local" = {
         listen = [
           {
             addr = "0.0.0.0";
