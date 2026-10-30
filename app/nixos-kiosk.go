@@ -204,10 +204,9 @@ func main() {
 						Usage:   "IP of the kiosk. DNS server will be set to this IP.",
 					},
 					&cli.Uint8Flag{
-						Name:    "prefix",
-						Aliases: []string{"p"},
-						Value:   24,
-						Usage:   "Prefix of the IP space managed by the kiosk.",
+						Name:  "prefix",
+						Value: 24,
+						Usage: "Prefix of the IP space managed by the kiosk.",
 					},
 					&cli.StringFlag{
 						Name:    "psk-file",
