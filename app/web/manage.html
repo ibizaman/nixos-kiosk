@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiosk Management</title>
+
+<style>
+:root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --background: #f5f7fb;
+    --card: #ffffff;
+    --border: #dbe3ee;
+    --text: #1f2937;
+    --muted: #6b7280;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Helvetica, Arial, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.container {
+    width: 100%;
+    max-width: 480px;
+}
+
+h1 {
+    margin: 0 0 1.5rem;
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.badge.ap {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.badge.connected {
+    background: #ecfdf5;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.strength-bar {
+    display: inline-block;
+    width: 6px;
+    border-radius: 2px;
+    background: currentColor;
+    vertical-align: bottom;
+    margin-right: 1px;
+    opacity: 0.3;
+}
+.strength-bar.active { opacity: 1; }
+
+.qrcode {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.qrcode img {
+    width: min(70vw, 220px);
+    height: auto;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.credentials {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+}
+
+.credentials .label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+}
+
+.credentials .value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.05rem;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+}
+
+input {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    font-size: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: border-color .2s, box-shadow .2s;
+}
+
+input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+button {
+    padding: 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: var(--primary);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .2s;
+}
+
+button:hover { background: var(--primary-hover); }
+button:active { transform: translateY(1px); }
+
+button:disabled {
+    background: #cbd5e1;
+    color: #64748b;
+    cursor: not-allowed;
+    opacity: 0.75;
+}
+button:disabled:hover { background: #cbd5e1; }
+button:disabled:active { transform: none; }
+
+.status-msg {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.status-msg.info    { background: #eef6ff; color: #0b5ed7; border: 1px solid #bfdbfe; }
+.status-msg.success { background: #ecfdf5; color: #166534; border: 1px solid #bbf7d0; }
+.status-msg.error   { background: #fdecec; color: #b3261e; border: 1px solid #f3b3b3; }
+.hidden { display: none; }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Kiosk Management</h1>
+
+<!-- WiFi Status Card -->
+<div class="card">
+<h2>WiFi Status</h2>
+
+{{ if .APMode }}
+<div class="badge ap">Access Point Mode</div>
+<p style="margin:0 0 0.5rem; color:var(--muted); font-size:0.95rem;">
+  Connect your device to <strong>{{ .HotspotSSID }}</strong> to access this page.
+</p>
+<div class="qrcode">
+  <img src="/wifi.png" alt="WiFi QR code for hotspot">
+</div>
+<div class="credentials">
+  <div class="label">Hotspot Password</div>
+  <div class="value">{{ .HotspotPSK }}</div>
+</div>
+{{ else }}
+<div class="badge connected">
+  Connected
+  {{ if gt .Strength 0 }}
+  — {{ .ConnectedSSID }}
+  <span style="margin-left:0.25rem;" title="{{ .Strength }}% signal">
+    {{ template "strength-bars" .Strength }}
+  </span>
+  {{ end }}
+</div>
+{{ if and (eq .Strength 0) .ConnectedSSID }}
+<p style="margin:0; color:var(--muted); font-size:0.95rem;">
+  Connected to <strong>{{ .ConnectedSSID }}</strong>
+</p>
+{{ end }}
+{{ end }}
+
+</div>
+
+<!-- Change WiFi Card -->
+<div class="card">
+<h2>Change WiFi Network</h2>
+<form id="wifi-form">
+  <div>
+    <label for="ssid">Network Name (SSID)</label>
+    <input id="ssid" name="ssid" autocomplete="off" required>
+  </div>
+  <div>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" minlength="8" required
+           title="Password must be at least 8 characters">
+  </div>
+  <button type="submit">Connect</button>
+  <div id="wifi-status" class="status-msg hidden"></div>
+</form>
+</div>
+
+<!-- Settings Card -->
+<div class="card">
+<h2>Settings</h2>
+<form id="settings-form">
+  <div>
+    <label for="hostname">Hostname</label>
+    <input id="hostname" name="hostname" value="{{ .Settings.MDNSHostname }}"
+           placeholder="magic-frame">
+  </div>
+  <div>
+    <label for="updateUrl">Update URL</label>
+    <input id="updateUrl" name="updateUrl" value="{{ .Settings.UpdateURL }}"
+           placeholder="github:owner/repo">
+  </div>
+  <button type="submit">Save Settings</button>
+  <div id="settings-status" class="status-msg hidden"></div>
+</form>
+</div>
+
+</div><!-- .container -->
+</body>
+
+{{ define "strength-bars" }}
+{{ end }}
+
+<script>
+async function submitForm(formId, url, statusId, button) {
+    const form = document.getElementById(formId);
+    const statusEl = document.getElementById(statusId);
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        statusEl.className = "status-msg info";
+        statusEl.textContent = "Saving…";
+        button.disabled = true;
+
+        try {
+            const resp = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams(new FormData(form)),
+            });
+            const result = await resp.json();
+            if (!resp.ok || result.status !== "ok") {
+                throw new Error(result.error || "Request failed.");
+            }
+            statusEl.className = "status-msg success";
+            statusEl.textContent = "Saved!";
+        } catch (err) {
+            statusEl.className = "status-msg error";
+            statusEl.textContent = err.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+}
+
+// WiFi form — shows connecting status and polls for activation
+(function() {
+    const form = document.getElementById("wifi-form");
+    const statusEl = document.getElementById("wifi-status");
+    const button = form.querySelector("button[type=submit]");
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        statusEl.className = "status-msg info";
+        statusEl.textContent = "Connecting…";
+        button.disabled = true;
+
+        try {
+            let resp = await fetch("/manage/wifi", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams(new FormData(form)),
+            });
+            let result = await resp.json();
+            if (!resp.ok || result.status !== "ok") {
+                throw new Error(result.error || "Connection failed.");
+            }
+
+            const path = result.path;
+            for (let i = 0; i < 45; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                resp = await fetch(`/manage/wifi/status?path=${encodeURIComponent(path)}`);
+                result = await resp.json();
+                if (!resp.ok || result.status !== "ok") {
+                    throw new Error(result.error || "Connection failed.");
+                }
+                if (result.state === "activated") {
+                    statusEl.className = "status-msg success";
+                    statusEl.textContent = "Connected! Reloading…";
+                    setTimeout(() => location.reload(), 1500);
+                    return;
+                }
+                if (result.state === "activating") {
+                    statusEl.textContent = "Connecting" + ".".repeat((i % 3) + 1);
+                    continue;
+                }
+                throw new Error("Failed to connect: " + result.state);
+            }
+            throw new Error("Connection timed out.");
+        } catch (err) {
+            statusEl.className = "status-msg error";
+            statusEl.textContent = err.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+})();
+
+// Settings form
+(function() {
+    const form = document.getElementById("settings-form");
+    const statusEl = document.getElementById("settings-status");
+    const button = form.querySelector("button[type=submit]");
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        statusEl.className = "status-msg info";
+        statusEl.textContent = "Saving…";
+        button.disabled = true;
+
+        try {
+            const resp = await fetch("/manage/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams(new FormData(form)),
+            });
+            const result = await resp.json();
+            if (!resp.ok || result.status !== "ok") {
+                throw new Error(result.error || "Save failed.");
+            }
+            statusEl.className = "status-msg success";
+            statusEl.textContent = "Settings saved.";
+        } catch (err) {
+            statusEl.className = "status-msg error";
+            statusEl.textContent = err.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+})();
+</script>
+</html>
