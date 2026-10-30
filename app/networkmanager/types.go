@@ -95,3 +95,9 @@ func (a ActiveConnection) IsActivatingOrActivated() bool {
 	return a.State == uint32(NMActiveConnectionStateActivated) ||
 		a.State == uint32(NMActiveConnectionStateActivating)
 }
+
+// ActiveWifiInfo holds the SSID and signal strength of the active WiFi connection.
+type ActiveWifiInfo struct {
+	SSID     string
+	Strength uint8
+}

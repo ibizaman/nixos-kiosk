@@ -373,6 +373,38 @@ func (c *Client) createOrUpdate(id string, settings map[string]map[string]dbus.V
 	}
 }
 
+// GetActiveWifiInfo returns the SSID and signal strength of the currently active WiFi connection.
+// Returns nil if no WiFi device has an active access point.
+func (c *Client) GetActiveWifiInfo() (*ActiveWifiInfo, error) {
+	devs, err := c.Devices()
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range devs {
+		if d.Type != NMDeviceTypeWifi {
+			continue
+		}
+		obj := c.obj(dbus.ObjectPath(d.Path))
+		apPathV, err := c.prop(obj, nmWirelessIface, "ActiveAccessPoint")
+		if err != nil {
+			continue
+		}
+		apPath, ok := apPathV.Value().(dbus.ObjectPath)
+		if !ok || apPath == "/" || apPath == "" {
+			continue
+		}
+		ap, err := c.readAP(apPath)
+		if err != nil {
+			continue
+		}
+		if ap.SSID == "" {
+			continue
+		}
+		return &ActiveWifiInfo{SSID: ap.SSID, Strength: ap.Strength}, nil
+	}
+	return nil, nil
+}
+
 func (c *Client) WaitWhileConnecting(path string, timeout time.Duration) (string, error) {
 	end := time.Now().Add(timeout)
 	var state NMActiveConnectionState
