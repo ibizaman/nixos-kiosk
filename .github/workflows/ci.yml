@@ -9,15 +9,15 @@ jobs:
     name: Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: nixbuild/nix-quick-install-action@v28
+      - uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: |
             extra-substituters = https://nixos-kiosk.cachix.org https://ibizaman.cachix.org https://nixos-raspberrypi.cachix.org
             extra-trusted-public-keys = ibizaman.cachix.org-1:Y8cRpAoeMfeeUp1jRG5KuwoVteZOQLG4HYkYyT4TC8k= nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
 
-      - uses: nixbuild/nixbuild-action@v1
+      - uses: nixbuild/nixbuild-action@v27
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
@@ -39,15 +39,15 @@ jobs:
       matrix:
         config: [nixos-kiosk-rpi2, nixos-kiosk-rpi3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: nixbuild/nix-quick-install-action@v28
+      - uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: |
             extra-substituters = https://nixos-kiosk.cachix.org https://ibizaman.cachix.org https://nixos-raspberrypi.cachix.org
             extra-trusted-public-keys = ibizaman.cachix.org-1:Y8cRpAoeMfeeUp1jRG5KuwoVteZOQLG4HYkYyT4TC8k= nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
 
-      - uses: nixbuild/nixbuild-action@v1
+      - uses: nixbuild/nixbuild-action@v27
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
