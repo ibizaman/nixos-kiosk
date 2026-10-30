@@ -115,7 +115,7 @@ pkgs.testers.runNixOSTest {
     out = kiosk.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager add '{ssid}'")
     path = json.loads(out)
     print(path)
-    out = ap.succeed(f"nixos-kiosk network-manager connect {path}")
+    out = kiosk.succeed(f"nixos-kiosk network-manager connect {path}")
     print(out)
 
     sleep(5)
