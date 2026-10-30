@@ -74,9 +74,9 @@ pkgs.testers.runNixOSTest {
       kiosk.wait_for_unit("wpa_supplicant.service")
       kiosk.wait_for_unit("nixos-kiosk.service")
 
-      with subtest("initial state: kiosk displays setup page"):
+      with subtest("initial state: kiosk displays manage page"):
           url = get_current_url()
-          expected = "http://${cfg.config.kiosk.setupURL}/connect"
+          expected = "http://${cfg.config.kiosk.hostname}.local/manage"
           if url != expected:
               raise Exception(f"Unexpected URL: {url!r}, want {expected!r}")
 
@@ -104,7 +104,7 @@ pkgs.testers.runNixOSTest {
 
       with subtest("submit WiFi credentials via kiosk web server"):
           out = kiosk.succeed(
-              f"curl -s -f -X POST http://localhost:${toString cfg.config.kiosk.setupPort}/"
+              f"curl -s -f -X POST http://localhost:${toString cfg.config.kiosk.setupPort}/manage/wifi"
               f" --data-urlencode 'ssid={home_ssid}'"
               f" --data-urlencode 'password={home_psk}'"
           )
