@@ -27,7 +27,7 @@ jobs:
             echo "Run the following to update it:"
             echo ""
             echo "  nix build .#packages.x86_64-linux.screenshot-setup-form -o result-screenshot"
-            echo "  cp result-screenshot screenshots/setup-form.png"
+            echo "  cp result-screenshot/setup-form.png screenshots/setup-form.png"
             echo ""
             exit 1
           fi
