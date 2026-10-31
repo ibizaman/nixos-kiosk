@@ -48,7 +48,6 @@ pkgs.testers.runNixOSTest {
 
   testScript = ''
     import json
-    from time import sleep
 
     def find_home_wifi(ssid):
         out = kiosk.succeed("nixos-kiosk network-manager profiles")
