@@ -114,6 +114,7 @@ in
       ];
 
       serviceConfig = {
+        Type = "notify";
         ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json";
         User = "kiosk-controller";
         Restart = "always";
