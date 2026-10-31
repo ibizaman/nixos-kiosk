@@ -194,10 +194,9 @@ func (c *Client) RequestScan() error {
 
 	opts := map[string]dbus.Variant{} // NM requires an (even empty) options map
 	for _, d := range devs {
-		if d.Type != NMDeviceTypeWifi {
-			continue
-		}
-		// Best-effort; a device may already be scanning.
+		// Try every device; non-WiFi devices will return a DBus error which we ignore.
+		// This handles virtual drivers (e.g. mac80211_hwsim) that NM may report as
+		// type "unknown" instead of type "wifi".
 		_ = c.obj(dbus.ObjectPath(d.Path)).Call(nmWirelessIface+".RequestScan", 0, opts).Err
 	}
 	return nil
@@ -520,10 +519,13 @@ func (c *Client) readSavedConn(path dbus.ObjectPath) (SavedConnection, error) {
 		autoConnect, _ = v.Value().(bool)
 	}
 
-	var ssid string
+	var ssid, mode string
 	if wifi, ok := raw["802-11-wireless"]; ok {
 		if b, ok := wifi["ssid"].Value().([]byte); ok {
 			ssid = string(b)
+		}
+		if m, ok := wifi["mode"].Value().(string); ok {
+			mode = m
 		}
 	}
 
@@ -533,6 +535,7 @@ func (c *Client) readSavedConn(path dbus.ObjectPath) (SavedConnection, error) {
 		UUID:        uuid,
 		Type:        connType,
 		SSID:        ssid,
+		Mode:        mode,
 		AutoConnect: autoConnect,
 	}, nil
 }
@@ -542,18 +545,15 @@ func (c *Client) allAccessPoints(devs []NetworkDevice) ([]AccessPoint, error) {
 	var out []AccessPoint
 
 	for _, d := range devs {
-		if d.Type != NMDeviceTypeWifi {
-			log.Printf("AllAccessPoints: ignoring device %s with type %s", d.Path, d.TypeName)
-			continue
-		}
+		// Try every device; non-WiFi devices will fail the GetAllAccessPoints call
+		// which we silently skip. This handles virtual drivers (e.g. mac80211_hwsim)
+		// that NM may report as type "unknown" instead of type "wifi".
 		aps, err := c.apForDevice(dbus.ObjectPath(d.Path))
 		if err != nil {
-			log.Printf("AllAccessPoints: could not get access points for device %s: %s", d.Path, err)
 			continue
 		}
 		for _, ap := range aps {
 			if ap.SSID == "" {
-				log.Printf("AllAccessPoints: ignoring ap for device %s %s with empty SSID", d.Path, ap.Path)
 				continue
 			}
 			if _, dup := seen[ap.SSID]; dup {

@@ -22,6 +22,10 @@
       test.vwifi-client.mac = lib.mkOption {
         type = lib.types.str;
       };
+      test.vwifi-client.ip = lib.mkOption {
+        type = lib.types.str;
+        default = "192.168.1.3";
+      };
     };
 
     config = {
@@ -29,7 +33,7 @@
       networking.networkmanager.enable = true;
       networking.interfaces.eth1.ipv4.addresses = lib.mkForce [
         {
-          address = "192.168.1.3";
+          address = config.test.vwifi-client.ip;
           prefixLength = 24;
         }
       ];

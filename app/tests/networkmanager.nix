@@ -44,6 +44,7 @@ pkgs.testers.runNixOSTest {
     ];
 
     test.vwifi-client.mac = "74:F8:F6:00:02";
+    test.vwifi-client.ip = "192.168.1.4";
   };
 
   testScript = ''
@@ -79,6 +80,9 @@ pkgs.testers.runNixOSTest {
 
     airgap.wait_for_unit("multi-user.target")
     ap.wait_for_unit("multi-user.target")
+    ap.wait_for_unit("NetworkManager.service")
+    ap.wait_for_unit("vwifi-client.service")
+    ap.wait_for_unit("wpa_supplicant.service")
     kiosk.wait_for_unit("NetworkManager.service")
     kiosk.wait_for_unit("vwifi-client.service")
     kiosk.wait_for_unit("multi-user.target")
