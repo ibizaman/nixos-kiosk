@@ -7,6 +7,10 @@ displays a setup form where you can enter your network credentials:
 
 ![WiFi setup form](screenshots/setup-form.png)
 
+When connected, the WiFi is still configurable:
+
+![WiFi setup form](screenshots/setup-form.png)
+
 ## Setup
 
 1. Build the sdcard image:
