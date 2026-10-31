@@ -78,13 +78,9 @@ func Start(ctx context.Context, nm *networkmanager.Client, cfg ServerConfig) (Li
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/manage/wifi/status?"+r.URL.RawQuery, http.StatusMovedPermanently)
 	})
-	// POST / kept for backwards compatibility with existing clients.
-	mux.HandleFunc("POST /", wifiConnectPost(nm))
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
+	// POST /{$} kept for backwards compatibility with existing clients.
+	mux.HandleFunc("POST /{$}", wifiConnectPost(nm))
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/manage", http.StatusFound)
 	})
 
