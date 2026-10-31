@@ -27,6 +27,14 @@ pkgs.testers.runNixOSTest {
     ];
 
     test.vwifi-client.mac = "74:F8:F6:00:01";
+
+    services.dnsmasq = {
+      enable = true;
+      settings = {
+        dhcp-range = [ "10.10.0.10,10.10.0.100,12h" ];
+      };
+    };
+    networking.firewall.allowedUDPPorts = [ 53 67 ];
   };
 
   nodes.kiosk = {
