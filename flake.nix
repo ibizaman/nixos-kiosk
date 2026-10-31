@@ -70,12 +70,16 @@
                 nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
               }
               // lib.optionalAttrs (system == "x86_64-linux") {
-                screenshot-setup-form = pkgs.runCommand "screenshot-setup-form" {
-                  test = self'.checks.screenshot-setup-form;
-                } ''
-                  mkdir $out
-                  cp $test/setup-form.png $out/setup-form.png
-                '';
+                screenshot-setup-form =
+                  let
+                    test = pkgs.callPackage ./nix/screenshot.nix {
+                      inherit (self'.packages) nixos-kiosk;
+                    };
+                  in
+                  pkgs.runCommand "screenshot-setup-form" { inherit test; } ''
+                    mkdir $out
+                    cp $test/setup-form.png $out/setup-form.png
+                  '';
               }
               // sdImagePackages;
 
@@ -91,7 +95,6 @@
                 app-networkmanager = mkCheck ./app/tests/networkmanager.nix;
                 app-chromium = mkCheck ./app/tests/chromium.nix;
                 app-daemon = mkCheck ./app/tests/daemon.nix;
-                screenshot-setup-form = mkCheck ./nix/screenshot.nix;
               }
             );
           };
