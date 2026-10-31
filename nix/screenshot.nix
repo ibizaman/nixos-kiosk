@@ -13,10 +13,7 @@ pkgs.testers.runNixOSTest {
     kiosk.chromiumKioskEnable = true;
     kiosk.fixedInsecureKioskPassword = "12345678";
 
-    virtualisation.resolution = {
-      x = 1280;
-      y = 1024;
-    };
+    boot.kernelParams = [ "video=1280x1024" ];
   };
 
   testScript = ''

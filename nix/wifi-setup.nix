@@ -206,6 +206,7 @@ in
               ''
                 chromium \
                   ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
+                  --ozone-platform=wayland \
                   --no-first-run \
                   --hide-cursor \
                   --disable-infobars \
