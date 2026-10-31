@@ -70,15 +70,16 @@
                 nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
               }
               // lib.optionalAttrs (system == "x86_64-linux") {
-                screenshot-setup-form =
+                screenshots =
                   let
                     test = pkgs.callPackage ./nix/screenshot.nix {
                       inherit (self'.packages) nixos-kiosk;
                     };
                   in
-                  pkgs.runCommand "screenshot-setup-form" { inherit test; } ''
+                  pkgs.runCommand "screenshots" { inherit test; } ''
                     mkdir $out
-                    cp $test/setup-form.png $out/setup-form.png
+                    cp $test/setup-form.png $out/
+                    cp $test/connected.png $out/
                   '';
               }
               // sdImagePackages;
