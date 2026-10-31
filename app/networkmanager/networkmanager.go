@@ -408,10 +408,8 @@ func (c *Client) GetActiveWifiInfo() (*ActiveWifiInfo, error) {
 func (c *Client) WaitWhileConnecting(path string, timeout time.Duration) (string, error) {
 	end := time.Now().Add(timeout)
 	var state NMActiveConnectionState
-	var err error
-	for now := time.Now(); now.Before(end); {
-		var a ActiveConnection
-		a, err = c.readActiveConn(dbus.ObjectPath(path))
+	for time.Now().Before(end) {
+		a, err := c.readActiveConn(dbus.ObjectPath(path))
 		if err != nil {
 			time.Sleep(2 * time.Second)
 			continue
@@ -422,9 +420,9 @@ func (c *Client) WaitWhileConnecting(path string, timeout time.Duration) (string
 			time.Sleep(2 * time.Second)
 			continue
 		}
-		break
+		return activeConnectionStateName(state), nil
 	}
-	return activeConnectionStateName(state), err
+	return "", fmt.Errorf("timed out after %s waiting for connection %s (last state: %s)", timeout, path, activeConnectionStateName(state))
 }
 
 // internal helpers
