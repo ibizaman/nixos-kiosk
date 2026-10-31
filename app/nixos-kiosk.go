@@ -248,18 +248,18 @@ func main() {
 func networkManagerStatus(ctx context.Context, cmd *cli.Command) error {
 	c, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer c.Close()
 
 	info, err := c.NetworkInfo()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	infoStr, err := json.Marshal(info)
 	if err != nil {
-		log.Fatalf("cannot marshal info: %s", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 	fmt.Printf("%s", string(infoStr))
 	return nil
@@ -268,18 +268,18 @@ func networkManagerStatus(ctx context.Context, cmd *cli.Command) error {
 func networkManagerProfiles(ctx context.Context, cmd *cli.Command) error {
 	c, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer c.Close()
 
 	conns, err := c.ListSavedConnections()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	connsStr, err := json.Marshal(conns)
 	if err != nil {
-		log.Fatalf("cannot marshal info: %s", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 	fmt.Printf("%s", string(connsStr))
 	return nil
@@ -290,22 +290,22 @@ func networkManagerConnect(ctx context.Context, cmd *cli.Command) error {
 
 	c, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer c.Close()
 
 	res, err := c.Connect(profile)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	resStr, err := json.Marshal(res.ActiveConnectionPath)
 	if err != nil {
-		log.Fatalf("cannot marshal result: %s", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 
 	state, err := c.WaitWhileConnecting(res.ActiveConnectionPath, 30*time.Second)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	fmt.Printf("%s: %s", string(resStr), state)
 	if state != "activated" {
@@ -318,23 +318,23 @@ func networkManagerAdd(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
 	password, err := readPassword(cmd)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	c, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer c.Close()
 
 	res, err := c.CreateWifi(ssid, ssid, password)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	resStr, err := json.Marshal(res)
 	if err != nil {
-		log.Fatalf("cannot marshal result: %s", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 	fmt.Printf("%s", string(resStr))
 	return nil
@@ -347,23 +347,23 @@ func networkManagerAddAP(ctx context.Context, cmd *cli.Command) error {
 	prefix := cmd.Uint8("prefix")
 	password, err := readPassword(cmd)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	c, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer c.Close()
 
 	res, err := c.CreateOrUpdateAP(id, ssid, password, ip, prefix)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	resStr, err := json.Marshal(res)
 	if err != nil {
-		log.Fatalf("cannot marshal result: %s", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 	fmt.Printf("%s", string(resStr))
 	return nil
@@ -374,14 +374,14 @@ func readPassword(cmd *cli.Command) (string, error) {
 	if psk_file := cmd.String("psk-file"); psk_file != "" {
 		p, err := os.ReadFile(psk_file)
 		if err != nil {
-			log.Fatalf("Could not read psk-file: %s", err)
+			return "", fmt.Errorf("read psk-file: %w", err)
 		}
 		password = strings.TrimSpace(string(p))
 	} else {
 		password = os.Getenv("NIXOS_KIOSK_PSK")
 	}
 	if password == "" {
-		return "", fmt.Errorf("No password given with NIXOS_KIOSK_PSK env var or --psk-file")
+		return "", fmt.Errorf("no password: set NIXOS_KIOSK_PSK or use --psk-file")
 	}
 	return password, nil
 }
@@ -398,7 +398,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 
 	n, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatalf("could not initialize network manager: %s", err)
+		return fmt.Errorf("networkmanager: %w", err)
 	}
 	defer n.Close()
 
@@ -424,7 +424,7 @@ func chromiumGetURL(ctx context.Context, cmd *cli.Command) error {
 
 	url, err := cClient.GetCurrentURL()
 	if err != nil {
-		log.Fatalf("could not get current URL in chromium: %s", err)
+		return fmt.Errorf("get url: %w", err)
 	}
 
 	fmt.Println(url)
@@ -437,14 +437,14 @@ func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 
 	cClient := chromium.NewClient("127.0.0.1", port)
 
-	close, err := cClient.Connect()
+	closeWS, err := cClient.Connect()
 	if err != nil {
-		return err
+		return fmt.Errorf("connect: %w", err)
 	}
-	defer close()
+	defer closeWS()
 
 	if err := cClient.Navigate(url); err != nil {
-		log.Fatalf("could not display new URL in chromium: %s", err)
+		return fmt.Errorf("navigate: %w", err)
 	}
 
 	return nil
@@ -480,7 +480,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	n, err := networkmanager.NewClient()
 	if err != nil {
-		log.Fatalf("could not initialize network manager: %s", err)
+		return fmt.Errorf("networkmanager: %w", err)
 	}
 	defer n.Close()
 
