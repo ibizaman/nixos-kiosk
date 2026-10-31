@@ -100,8 +100,6 @@ pkgs.testers.runNixOSTest {
           out = mobile.succeed(f"nixos-kiosk network-manager connect {path}")
           print(f"Connect result: {out}")
 
-      mobile.sleep(3)
-
       with subtest("submit WiFi credentials via kiosk web server"):
           out = kiosk.succeed(
               f"curl -s -f -X POST http://localhost:${toString cfg.config.kiosk.setupPort}/manage/wifi"

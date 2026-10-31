@@ -72,6 +72,7 @@ type SavedConnection struct {
 	UUID        string `json:"uuid"`
 	Type        string `json:"type"` // "802-11-wireless", "802-3-ethernet", etc.
 	SSID        string `json:"ssid"` // non-empty for WiFi profiles only
+	Mode        string `json:"mode"` // "infrastructure", "ap", etc. (WiFi only)
 	AutoConnect bool   `json:"autoConnect"`
 }
 
