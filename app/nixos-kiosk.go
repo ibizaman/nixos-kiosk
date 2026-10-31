@@ -477,7 +477,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		close(navigateChan)
 	}()
 
-	setupURL := fmt.Sprintf("http://%s.local/manage", cmd.String("hostname"))
+	setupURL := fmt.Sprintf("http://localhost:%d/manage", cmd.Uint16("port"))
 	c := daemon.Config{
 		SSID:     ssid,
 		Password: password,
