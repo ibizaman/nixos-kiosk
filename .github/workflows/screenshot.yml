@@ -27,7 +27,7 @@ jobs:
             echo "Run the following to update it:"
             echo ""
             echo "  nix build .#packages.x86_64-linux.screenshots -o result-screenshots"
-            echo "  cp -r result-screenshots/ screenshots/"
+            echo "  cp -r result-screenshots/* screenshots/"
             echo ""
             exit 1
           fi
