@@ -10,8 +10,13 @@ pkgs.testers.runNixOSTest {
     imports = [ ./wifi-setup.nix ];
 
     kiosk.enable = true;
-    kiosk.chromiumKioskEnable = false;
+    kiosk.chromiumKioskEnable = true;
     kiosk.fixedInsecureKioskPassword = "12345678";
+
+    virtualisation.resolution = {
+      x = 1280;
+      y = 1024;
+    };
   };
 
   testScript = ''
