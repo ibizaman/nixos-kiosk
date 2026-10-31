@@ -211,7 +211,7 @@ in
                   --noerrdialogs \
                   --remote-debugging-address=127.0.0.1 \
                   --remote-debugging-port=${toString cfg.chromiumPort} \
-                  http://${cfg.hostname}.local/manage
+                  http://localhost:${toString cfg.setupPort}/manage
               '';
         }
       );

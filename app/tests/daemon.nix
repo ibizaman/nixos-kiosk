@@ -76,7 +76,7 @@ pkgs.testers.runNixOSTest {
 
       with subtest("initial state: kiosk displays manage page"):
           url = get_current_url()
-          expected = "http://${cfg.config.kiosk.hostname}.local/manage"
+          expected = "http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
           if url != expected:
               raise Exception(f"Unexpected URL: {url!r}, want {expected!r}")
 
