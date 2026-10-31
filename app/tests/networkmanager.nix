@@ -107,18 +107,12 @@ pkgs.testers.runNixOSTest {
     out = ap.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager addAP kiosk-setup-ap '{ssid}' '{ip}'")
     path = json.loads(out)
     print(path)
-    out = ap.succeed(f"nixos-kiosk network-manager connect {path}")
-    print(out)
-
-    sleep(5)
+    ap.wait_until_succeeds(f"nixos-kiosk network-manager connect {path}", timeout=60)
 
     out = kiosk.succeed(f"NIXOS_KIOSK_PSK=asecurepassword nixos-kiosk network-manager add '{ssid}'")
     path = json.loads(out)
     print(path)
-    out = kiosk.succeed(f"nixos-kiosk network-manager connect {path}")
-    print(out)
-
-    sleep(5)
+    kiosk.wait_until_succeeds(f"nixos-kiosk network-manager connect {path}", timeout=60)
 
     with subtest(f"Find home wifi {ssid}"):
         home_wifi = find_home_wifi(ssid)
