@@ -47,6 +47,7 @@ type NetworkManager interface {
 	GetSavedConnectionByID(id string) (*networkmanager.SavedConnection, error)
 	CreateOrUpdateAP(id string, ssid string, psk string, ip string, prefix uint8) (string, error)
 	Connect(connectionPath string) (*networkmanager.ConnectResult, error)
+	WaitWhileConnecting(path string, timeout time.Duration) (string, error)
 }
 
 func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string) {
@@ -95,8 +96,16 @@ func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string)
 				continue
 			}
 
-			if _, err := n.Connect(path); err != nil {
+			result, err := n.Connect(path)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "watcher: could not start Access Point: %s\n", err)
+				time.Sleep(c.pollInterval())
+				continue
+			}
+
+			state, err := n.WaitWhileConnecting(result.ActiveConnectionPath, 30*time.Second)
+			if err != nil || state != "activated" {
+				fmt.Fprintf(os.Stderr, "watcher: Access Point did not activate (state: %s, err: %v)\n", state, err)
 				time.Sleep(c.pollInterval())
 				continue
 			}
