@@ -2,6 +2,10 @@
 
 Create a Kiosk appliance with NixOS.
 
+Supports Raspberry Pi 2 and 3.
+
+## Usage
+
 When no WiFi is configured the device acts as an access point and
 displays a setup form where you can enter your network credentials:
 
