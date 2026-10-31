@@ -9,7 +9,7 @@ displays a setup form where you can enter your network credentials:
 
 When connected, the WiFi is still configurable:
 
-![WiFi setup form](screenshots/setup-form.png)
+![WiFi is connected](screenshots/connected.png)
 
 ## Setup
 
