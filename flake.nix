@@ -40,7 +40,6 @@
         perSystem =
           {
             self',
-            inputs',
             system,
             ...
           }:
