@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -108,9 +109,15 @@ func Start(ctx context.Context, nm *networkmanager.Client, cfg ServerConfig) (Li
 }
 
 func serve(ctx context.Context, srv *http.Server) error {
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		return err
+	}
+	sdNotify("READY=1\n")
+
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- srv.ListenAndServe()
+		errCh <- srv.Serve(ln)
 	}()
 	select {
 	case <-ctx.Done():
@@ -316,4 +323,21 @@ func writeJSON(w http.ResponseWriter, status int, resp any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// sdNotify sends state to systemd via NOTIFY_SOCKET. No-op outside systemd.
+func sdNotify(state string) {
+	socket := os.Getenv("NOTIFY_SOCKET")
+	if socket == "" {
+		return
+	}
+	conn, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: socket, Net: "unixgram"})
+	if err != nil {
+		log.Printf("sdNotify: %s", err)
+		return
+	}
+	defer conn.Close()
+	if _, err := conn.Write([]byte(state)); err != nil {
+		log.Printf("sdNotify: write: %s", err)
+	}
 }
