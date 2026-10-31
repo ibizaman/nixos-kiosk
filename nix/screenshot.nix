@@ -27,6 +27,7 @@ pkgs.testers.runNixOSTest {
         timeout=30
     )
     kiosk.sleep(3)
-    kiosk.screenshot("setup-form")
+    kiosk.succeed("nixos-kiosk chromium screenshot /tmp/setup-form.png")
+    kiosk.copy_from_vm("/tmp/setup-form.png", "")
   '';
 }

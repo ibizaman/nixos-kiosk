@@ -2,6 +2,7 @@ package chromium
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,6 +110,61 @@ func (c Client) Navigate(url string) error {
 		return errors.New(resp.Error)
 	}
 	return nil
+}
+
+type screenshotRequest struct {
+	ID     int    `json:"id"`
+	Method string `json:"method"`
+	Params struct {
+		Format                string `json:"format"`
+		CaptureBeyondViewport bool   `json:"captureBeyondViewport"`
+	} `json:"params"`
+}
+
+type screenshotResult struct {
+	ID     int    `json:"id"`
+	Error  string `json:"error"`
+	Result struct {
+		Data string `json:"data"`
+	} `json:"result"`
+}
+
+func (c Client) Screenshot() ([]byte, error) {
+	if c.ws == nil {
+		return nil, errors.New("not connected, call Connect first")
+	}
+
+	var req screenshotRequest
+	req.ID = 43
+	req.Method = "Page.captureScreenshot"
+	req.Params.Format = "png"
+	req.Params.CaptureBeyondViewport = true
+
+	if err := c.ws.WriteJSON(req); err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			var r screenshotResult
+			if err := c.ws.ReadJSON(&r); err != nil {
+				return nil, err
+			}
+			if r.ID != req.ID {
+				continue
+			}
+			if r.Error != "" {
+				return nil, errors.New(r.Error)
+			}
+			return base64.StdEncoding.DecodeString(r.Result.Data)
+		}
+	}
 }
 
 type Request struct {

@@ -169,6 +169,17 @@ func main() {
 						},
 						Action: chromiumNagivate,
 					},
+					{
+						Name:    "screenshot",
+						Aliases: []string{"s"},
+						Usage:   "Capture full-page CDP screenshot and write PNG to the given path",
+						Arguments: []cli.Argument{
+							&cli.StringArg{
+								Name: "output",
+							},
+						},
+						Action: chromiumScreenshot,
+					},
 				},
 			},
 			{
@@ -434,6 +445,26 @@ func chromiumNagivate(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+func chromiumScreenshot(ctx context.Context, cmd *cli.Command) error {
+	output := cmd.StringArg("output")
+	port := cmd.Uint16("port")
+
+	cClient := chromium.NewClient("127.0.0.1", port)
+
+	closeWS, err := cClient.Connect()
+	if err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+	defer closeWS()
+
+	data, err := cClient.Screenshot()
+	if err != nil {
+		return fmt.Errorf("screenshot: %w", err)
+	}
+
+	return os.WriteFile(output, data, 0o644)
 }
 
 func startDaemon(ctx context.Context, cmd *cli.Command) error {
