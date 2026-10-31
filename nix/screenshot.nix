@@ -32,6 +32,7 @@ pkgs.testers.runNixOSTest {
   nodes.kiosk = {
     environment.systemPackages = [
       pkgs.curl
+      pkgs.jq
     ];
 
     imports = with modules; [
@@ -101,7 +102,7 @@ pkgs.testers.runNixOSTest {
         raise Exception(f"Expected status=ok, got: {resp}")
 
     kiosk.wait_until_succeeds(
-        "nixos-kiosk nm s | python3 -c 'import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(c[\"id\"]==\"kiosk\" and c[\"stateName\"]==\"activated\" for c in d[\"activeConnections\"]) else 1)'",
+        "nixos-kiosk nm s | jq -e '.activeConnections[] | select(.id == \"kiosk\" and .stateName == \"activated\")'",
         timeout=60
     )
 
