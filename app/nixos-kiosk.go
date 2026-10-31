@@ -308,6 +308,9 @@ func networkManagerConnect(ctx context.Context, cmd *cli.Command) error {
 		log.Fatal(err)
 	}
 	fmt.Printf("%s: %s", string(resStr), state)
+	if state != "activated" {
+		return fmt.Errorf("connection did not activate (state: %s)", state)
+	}
 	return nil
 }
 
