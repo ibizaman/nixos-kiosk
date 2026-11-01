@@ -568,6 +568,8 @@ func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan 
 		}
 	}()
 
+	var targetURL string
+
 	for {
 		if ctx.Err() != nil {
 			return
@@ -575,29 +577,24 @@ func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan 
 
 		select {
 		case url := <-pending:
-			cClient := chromium.NewClient(ip, port)
-			closeWS, err := cClient.Connect()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s\n", err)
-				// Re-queue so we retry after the sleep.
-				select {
-				case <-pending:
-				default:
-				}
-				pending <- url
-			} else {
-				if err := cClient.Navigate(url); err != nil {
-					fmt.Fprintf(os.Stderr, "navigator: could not navigate to %s: %s\n", url, err)
-					// Re-queue for retry.
-					select {
-					case <-pending:
-					default:
-					}
-					pending <- url
-				}
-				closeWS()
-			}
+			targetURL = url
 		default:
+		}
+
+		if targetURL != "" {
+			cClient := chromium.NewClient(ip, port)
+			currentURL, err := cClient.GetCurrentURL()
+			if err != nil || currentURL != targetURL {
+				closeWS, err := cClient.Connect()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s\n", err)
+				} else {
+					if err := cClient.Navigate(targetURL); err != nil {
+						fmt.Fprintf(os.Stderr, "navigator: could not navigate to %s: %s\n", targetURL, err)
+					}
+					closeWS()
+				}
+			}
 		}
 
 		time.Sleep(5 * time.Second)
