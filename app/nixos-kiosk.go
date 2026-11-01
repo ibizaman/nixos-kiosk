@@ -547,8 +547,10 @@ func genPassword() string {
 }
 
 func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan string) {
-	var url string
-	var gotNew bool
+	// pending holds at most one URL to navigate to. The inner goroutine writes
+	// it; the outer loop reads and clears it. A buffered channel of size 1
+	// avoids the data race that plain shared variables would introduce.
+	pending := make(chan string, 1)
 
 	go func() {
 		for {
@@ -556,12 +558,13 @@ func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan 
 			if !ok {
 				return
 			}
-
-			if newURL != url {
-				url = newURL
-				gotNew = true
-				fmt.Fprintf(os.Stderr, "navigator: will navigate to new url: %s\n", url)
+			// Evict any queued URL so the latest one always wins.
+			select {
+			case <-pending:
+			default:
 			}
+			pending <- newURL
+			fmt.Fprintf(os.Stderr, "navigator: will navigate to: %s\n", newURL)
 		}
 	}()
 
@@ -570,22 +573,31 @@ func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan 
 			return
 		}
 
-		if gotNew {
+		select {
+		case url := <-pending:
 			cClient := chromium.NewClient(ip, port)
-
-			close, err := cClient.Connect()
+			closeWS, err := cClient.Connect()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s\n", err)
-				time.Sleep(5 * time.Second)
-				continue
+				// Re-queue so we retry after the sleep.
+				select {
+				case <-pending:
+				default:
+				}
+				pending <- url
+			} else {
+				if err := cClient.Navigate(url); err != nil {
+					fmt.Fprintf(os.Stderr, "navigator: could not navigate to %s: %s\n", url, err)
+					// Re-queue for retry.
+					select {
+					case <-pending:
+					default:
+					}
+					pending <- url
+				}
+				closeWS()
 			}
-			defer close()
-
-			if err := cClient.Navigate(url); err != nil {
-				fmt.Fprintf(os.Stderr, "navigator: could not navigate to new url: %s\n", err)
-				continue
-			}
-			gotNew = false
+		default:
 		}
 
 		time.Sleep(5 * time.Second)
