@@ -246,6 +246,9 @@ in
     networking.firewall.allowedTCPPorts = [ 53 80 443 ];
     services.dnsmasq = {
       enable = true;
+      # Don't register 127.0.0.1 as a nameserver for the kiosk itself.
+      # dnsmasq serves captive-portal DNS only to clients on the AP interface.
+      resolveLocalQueries = false;
 
       settings = {
         log-dhcp = cfg.dnsmasqDebug;
