@@ -244,8 +244,11 @@ in
       settings = {
         log-dhcp = cfg.dnsmasqDebug;
         log-queries = cfg.dnsmasqDebug;
-        # interface = "wlan0";
-        # bind-interfaces = true;
+        # Bind only to the AP IP so the kiosk's own DNS queries (on other
+        # interfaces) bypass dnsmasq and use the home network's resolvers.
+        # bind-dynamic allows startup before the AP interface is configured.
+        listen-address = cfg.kioskIP;
+        bind-dynamic = true;
         domain-needed = true;
         no-resolv = true;
 
