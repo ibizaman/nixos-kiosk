@@ -322,11 +322,11 @@ func (c *Client) CreateOrUpdateAP(id string, ssid string, psk string, ip string,
 					"prefix":  dbus.MakeVariant(uint32(prefix)),
 				},
 			}),
-			"dns-data": dbus.MakeVariant([]string{
-				ip,
-			}),
-			"gateway":         dbus.MakeVariant(ip),
-			"ignore-auto-dns": dbus.MakeVariant(true),
+			// Never install a default route for the AP interface: when home WiFi
+			// is also active, all traffic must route through that connection, not
+			// back through the AP. Keeping gateway and dns-data here would cause
+			// NM to use 192.168.4.1 (dnsmasq captive-portal) for DNS resolution.
+			"never-default": dbus.MakeVariant(true),
 		},
 		"ipv6": {
 			"method": dbus.MakeVariant("disabled"),
