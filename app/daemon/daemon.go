@@ -48,6 +48,7 @@ type NetworkManager interface {
 	CreateOrUpdateAP(id string, ssid string, psk string, ip string, prefix uint8) (string, error)
 	Connect(connectionPath string) (*networkmanager.ConnectResult, error)
 	WaitWhileConnecting(path string, timeout time.Duration) (string, error)
+	Disconnect(activeConnectionPath string) error
 }
 
 func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string) {
@@ -78,6 +79,11 @@ func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string)
 		if activeConnection != nil && activeConnection.IsActivatingOrActivated() {
 			lastActiveConnection = c.currentTime()
 			if !lastStateIsNormal {
+				if apConn, err := n.GetActiveConnectionByID(apProfileID); err == nil && apConn != nil {
+					if err := n.Disconnect(apConn.Path); err != nil {
+						fmt.Fprintf(os.Stderr, "watcher: could not disconnect AP: %s\n", err)
+					}
+				}
 				fmt.Printf("watcher: entering normal mode\n")
 				c.NormalAction(savedConnection.SSID)
 				lastStateIsNormal = true

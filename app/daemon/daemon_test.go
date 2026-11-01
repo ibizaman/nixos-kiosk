@@ -45,6 +45,10 @@ func (m *mockNM) WaitWhileConnecting(path string, timeout time.Duration) (string
 	return "activated", nil
 }
 
+func (m *mockNM) Disconnect(path string) error {
+	return nil
+}
+
 func activated() *networkmanager.ActiveConnection {
 	return &networkmanager.ActiveConnection{
 		ID:    "kiosk",
