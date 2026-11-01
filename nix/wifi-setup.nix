@@ -104,6 +104,7 @@ in
     ];
 
     networking.networkmanager.enable = true;
+    networking.networkmanager.wifi.powersave = false;
 
     # Enables touchscreen
     services.libinput.enable = true;
