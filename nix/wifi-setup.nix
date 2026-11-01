@@ -104,6 +104,7 @@ in
     ];
 
     networking.networkmanager.enable = true;
+    services.timesyncd.enable = true;
     networking.networkmanager.wifi.powersave = false;
     # Write DNS servers directly from DHCP into /etc/resolv.conf rather than
     # routing everything through the local dnsmasq (which serves captive-portal
