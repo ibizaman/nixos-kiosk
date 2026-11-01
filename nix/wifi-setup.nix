@@ -41,6 +41,17 @@ in
       default = pkgs.callPackage ./package.nix { };
     };
 
+    countryCode = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "US";
+      description = ''
+        ISO 3166-1 alpha-2 country code for the WiFi regulatory domain.
+        Required on brcmfmac devices (Raspberry Pi, Orange Pi) to prevent
+        the AP from being disabled by a regulatory domain reset to WORLD.
+      '';
+    };
+
     kioskIP = lib.mkOption {
       type = lib.types.str;
       default = "192.168.4.1";
@@ -218,6 +229,11 @@ in
         }
       );
     };
+
+    boot.extraModprobeConfig = lib.mkIf (cfg.countryCode != null) ''
+      options cfg80211 ieee80211_regdom=${cfg.countryCode}
+    '';
+    hardware.wirelessRegulatoryDatabase = lib.mkIf (cfg.countryCode != null) true;
 
     services.resolved.enable = false;
     networking.firewall.allowedUDPPorts = [ 53 67 ];
