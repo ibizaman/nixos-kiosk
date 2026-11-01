@@ -194,7 +194,7 @@
                 self.nixosModules.appliance
                 self.nixosModules.fake-wifi
                 {
-                  kiosk.chromiumKioskEnable = false;
+                  kiosk.countryCode = "CH";
                 }
               ];
             };
@@ -252,8 +252,9 @@
               modules = [
                 {
                   nixpkgs.hostPlatform = "aarch64-linux";
-                  kiosk.showJournal = true;
-                  kiosk.fixedInsecureKioskPassword = "12345678";
+                  kiosk.showJournal = false;
+                  kiosk.countryCode = "CH";
+                  # kiosk.fixedInsecureKioskPassword = "12345678";
                 }
                 self.nixosModules.rpi3-hw
                 self.nixosModules.rpi-hdmi
