@@ -560,7 +560,7 @@ func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan 
 			if newURL != url {
 				url = newURL
 				gotNew = true
-				fmt.Fprintf(os.Stderr, "navigator: will navigate to new url: %s", url)
+				fmt.Fprintf(os.Stderr, "navigator: will navigate to new url: %s\n", url)
 			}
 		}
 	}()
@@ -575,13 +575,14 @@ func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan 
 
 			close, err := cClient.Connect()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s", err)
+				fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s\n", err)
+				time.Sleep(5 * time.Second)
 				continue
 			}
 			defer close()
 
 			if err := cClient.Navigate(url); err != nil {
-				fmt.Fprintf(os.Stderr, "navigator: could not navigate to new url: %s", err)
+				fmt.Fprintf(os.Stderr, "navigator: could not navigate to new url: %s\n", err)
 				continue
 			}
 			gotNew = false
