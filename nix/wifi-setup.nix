@@ -105,6 +105,10 @@ in
 
     networking.networkmanager.enable = true;
     networking.networkmanager.wifi.powersave = false;
+    # Write DNS servers directly from DHCP into /etc/resolv.conf rather than
+    # routing everything through the local dnsmasq (which serves captive-portal
+    # responses and would resolve all hostnames to the kiosk's own IP).
+    networking.networkmanager.dns = "default";
 
     # Enables touchscreen
     services.libinput.enable = true;
