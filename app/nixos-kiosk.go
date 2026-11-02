@@ -8,11 +8,13 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/ibizaman/nixos-kiosk/chromium"
 	"github.com/ibizaman/nixos-kiosk/daemon"
+	"github.com/ibizaman/nixos-kiosk/navigator"
 	"github.com/ibizaman/nixos-kiosk/networkmanager"
 	"github.com/ibizaman/nixos-kiosk/web"
 	"github.com/urfave/cli/v3"
@@ -476,7 +478,13 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	navigateChan := make(chan string)
 
-	go navigator(ctx, "127.0.0.1", cmd.Uint16("chromium-port"), navigateChan)
+	port := cmd.Uint16("chromium-port")
+	go navigator.Run(ctx, navigator.Config{
+		NewClient: func() navigator.Client {
+			c := chromium.NewClient("127.0.0.1", port)
+			return &c
+		},
+	}, navigateChan)
 
 	n, err := networkmanager.NewClient()
 	if err != nil {
@@ -487,7 +495,11 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 	ssid := cmd.StringArg("SSID")
 	password, err := readPassword(cmd)
 	if err != nil {
-		password = genPassword()
+		passwordFile := filepath.Join(filepath.Dir(cmd.String("settings-path")), "ap-password")
+		password, err = readOrGeneratePassword(passwordFile)
+		if err != nil {
+			return fmt.Errorf("ap password: %w", err)
+		}
 	}
 
 	listenAddr := fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port"))
@@ -532,6 +544,21 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+func readOrGeneratePassword(filePath string) (string, error) {
+	data, err := os.ReadFile(filePath)
+	if err == nil {
+		return strings.TrimSpace(string(data)), nil
+	}
+	if !os.IsNotExist(err) {
+		return "", fmt.Errorf("read ap-password: %w", err)
+	}
+	pw := genPassword()
+	if err := os.WriteFile(filePath, []byte(pw+"\n"), 0o600); err != nil {
+		return "", fmt.Errorf("write ap-password: %w", err)
+	}
+	return pw, nil
+}
+
 var letters = []rune("123456789")
 
 func genPassword() string {
@@ -546,57 +573,3 @@ func genPassword() string {
 	return string(b)
 }
 
-func navigator(ctx context.Context, ip string, port uint16, navigateChan <-chan string) {
-	// pending holds at most one URL to navigate to. The inner goroutine writes
-	// it; the outer loop reads and clears it. A buffered channel of size 1
-	// avoids the data race that plain shared variables would introduce.
-	pending := make(chan string, 1)
-
-	go func() {
-		for {
-			newURL, ok := <-navigateChan
-			if !ok {
-				return
-			}
-			// Evict any queued URL so the latest one always wins.
-			select {
-			case <-pending:
-			default:
-			}
-			pending <- newURL
-			fmt.Fprintf(os.Stderr, "navigator: will navigate to: %s\n", newURL)
-		}
-	}()
-
-	var targetURL string
-
-	for {
-		if ctx.Err() != nil {
-			return
-		}
-
-		select {
-		case url := <-pending:
-			targetURL = url
-		default:
-		}
-
-		if targetURL != "" {
-			cClient := chromium.NewClient(ip, port)
-			currentURL, err := cClient.GetCurrentURL()
-			if err != nil || currentURL != targetURL {
-				closeWS, err := cClient.Connect()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s\n", err)
-				} else {
-					if err := cClient.Navigate(targetURL); err != nil {
-						fmt.Fprintf(os.Stderr, "navigator: could not navigate to %s: %s\n", targetURL, err)
-					}
-					closeWS()
-				}
-			}
-		}
-
-		time.Sleep(5 * time.Second)
-	}
-}
