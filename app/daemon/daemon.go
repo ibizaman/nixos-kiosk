@@ -2,9 +2,11 @@ package daemon
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/ibizaman/nixos-kiosk/networkmanager"
@@ -21,14 +23,33 @@ type Config struct {
 	// ConnectivityCheckHost is TCP-dialled on port 443 to confirm internet
 	// access before switching to normal mode. Empty → "www.github.com".
 	ConnectivityCheckHost string
+	// NTPServer is queried (UDP/123) to sync the clock once internet is
+	// confirmed. Empty → "0.nixos.pool.ntp.org".
+	NTPServer string
 
 	// PollInterval controls how often the watcher checks connection state.
 	// Zero defaults to 5 seconds.
 	PollInterval time.Duration
 	// now returns the current time. Nil defaults to time.Now().UTC.
 	now func() time.Time
-	// checkConnectivity is injectable for tests; nil uses the real implementation.
+	// injectable for tests; nil uses real implementations.
 	checkConnectivity func(host string) error
+	syncNTP           func(server string) error
+}
+
+func (c Config) effectiveNTPServer() string {
+	if c.NTPServer == "" {
+		return "0.nixos.pool.ntp.org"
+	}
+	return c.NTPServer
+}
+
+func (c Config) doSyncNTP() error {
+	fn := c.syncNTP
+	if fn == nil {
+		fn = syncNTP
+	}
+	return fn(c.effectiveNTPServer())
 }
 
 func (c Config) effectiveConnectivityHost() string {
@@ -111,6 +132,9 @@ func (c Config) watcher(ctx context.Context, n NetworkManager, profileID string)
 					time.Sleep(c.pollInterval())
 					continue
 				}
+				if err := c.doSyncNTP(); err != nil {
+					fmt.Fprintf(os.Stderr, "watcher: NTP sync failed (continuing): %s\n", err)
+				}
 				fmt.Printf("watcher: entering normal mode\n")
 				c.NormalAction(savedConnection.SSID)
 				lastStateIsNormal = true
@@ -165,4 +189,36 @@ func checkConnectivity(host string) error {
 	}
 	conn.Close()
 	return nil
+}
+
+// syncNTP sends a minimal NTP request to server:123 and sets the system clock.
+func syncNTP(server string) error {
+	conn, err := net.DialTimeout("udp", net.JoinHostPort(server, "123"), 5*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return err
+	}
+
+	req := make([]byte, 48)
+	req[0] = 0x1b // LI=0, VN=3, Mode=3 (client)
+	if _, err := conn.Write(req); err != nil {
+		return err
+	}
+
+	resp := make([]byte, 48)
+	if _, err := conn.Read(resp); err != nil {
+		return err
+	}
+
+	// Transmit timestamp is at bytes 40-47: seconds since 1900-01-01
+	secs := binary.BigEndian.Uint32(resp[40:44])
+	const ntpEpochOffset = 2208988800
+	unixSecs := int64(secs) - ntpEpochOffset
+
+	tv := syscall.Timeval{Sec: unixSecs}
+	return syscall.Settimeofday(&tv)
 }

@@ -68,6 +68,7 @@ func runWatcher(t *testing.T, nm *mockNM, cfg Config, duration time.Duration) {
 	t.Helper()
 	cfg.PollInterval = 10 * time.Millisecond
 	cfg.checkConnectivity = func(string) error { return nil }
+	cfg.syncNTP = func(string) error { return nil }
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
 	Start(ctx, nm, cfg)
