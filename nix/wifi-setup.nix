@@ -149,6 +149,8 @@ in
     };
 
     users.groups.kiosk-controller = { };
+    # nginx reads the captive-portal TLS key from /var/lib/nixos-kiosk/
+    users.users.nginx.extraGroups = [ "kiosk-controller" ];
     # Allow kiosk-controller to manage WiFi
     security.polkit.extraConfig = ''
       polkit.addRule(function(action, subject) {
@@ -286,6 +288,33 @@ in
       ];
     };
 
+    # Self-signed cert for the HTTPS catch-all: iOS 14+ probes
+    # https://captive.apple.com/... to detect captive portals. Without
+    # anything on port 443 iOS gets "connection refused" which it treats as
+    # "broken network" and disconnects immediately. With a self-signed cert it
+    # gets a TLS error, which iOS correctly reads as "intercepting captive
+    # portal" and keeps the connection alive.
+    systemd.services.kiosk-gen-tls-cert = {
+      description = "Generate self-signed TLS cert for kiosk captive portal";
+      wantedBy = [ "nginx.service" ];
+      before = [ "nginx.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "kiosk-controller";
+        Group = "kiosk-controller";
+      };
+      script = ''
+        if [ ! -f /var/lib/nixos-kiosk/captive-portal.crt ]; then
+          ${pkgs.openssl}/bin/openssl req -x509 -nodes -newkey rsa:2048 \
+            -keyout /var/lib/nixos-kiosk/captive-portal.key \
+            -out    /var/lib/nixos-kiosk/captive-portal.crt \
+            -days 3650 -subj "/CN=kiosk-captive-portal"
+          chmod 640 /var/lib/nixos-kiosk/captive-portal.key
+        fi
+      '';
+    };
+
     services.nginx = {
       enable = true;
 
@@ -305,10 +334,35 @@ in
 
         locations."/" = {
           extraConfig = ''
-            return 301 http://${cfg.hostname}.local;
+            return 302 http://${cfg.hostname}.local;
           '';
         };
       };
+
+      # Catch-all HTTPS vhost: returns 302 to the HTTP setup page so that
+      # iOS's HTTPS captive-portal probes get a TLS cert error (= "portal
+      # present") rather than connection refused (= "network broken").
+      virtualHosts."_https" = {
+        listen = [
+          {
+            addr = "0.0.0.0";
+            port = 443;
+            ssl = true;
+            extraParameters = [ "default_server" ];
+          }
+        ];
+
+        onlySSL = true;
+        sslCertificate = "/var/lib/nixos-kiosk/captive-portal.crt";
+        sslCertificateKey = "/var/lib/nixos-kiosk/captive-portal.key";
+
+        locations."/" = {
+          extraConfig = ''
+            return 302 http://${cfg.hostname}.local;
+          '';
+        };
+      };
+
       virtualHosts."${cfg.hostname}.local" = {
         listen = [
           {
