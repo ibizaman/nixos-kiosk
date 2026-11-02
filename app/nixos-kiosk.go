@@ -236,6 +236,14 @@ func main() {
 						Usage: "path to the settings JSON file",
 						Value: "/var/lib/nixos-kiosk/settings.json",
 					},
+					&cli.StringFlag{
+						Name:  "connectivity-check-host",
+						Usage: "host to TCP-dial on port 443 to confirm internet access (default: www.github.com)",
+					},
+					&cli.StringFlag{
+						Name:  "ntp-server",
+						Usage: "NTP server to sync the clock after connectivity is confirmed (default: 0.nixos.pool.ntp.org)",
+					},
 				},
 				Action: startDaemon,
 			},
@@ -525,10 +533,12 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	setupURL := fmt.Sprintf("http://localhost:%d/manage", cmd.Uint16("port"))
 	c := daemon.Config{
-		SSID:     ssid,
-		Password: password,
-		IP:       cmd.String("ip"),
-		Prefix:   cmd.Uint8("prefix"),
+		SSID:                  ssid,
+		Password:              password,
+		IP:                    cmd.String("ip"),
+		Prefix:                cmd.Uint8("prefix"),
+		ConnectivityCheckHost: cmd.String("connectivity-check-host"),
+		NTPServer:             cmd.String("ntp-server"),
 		SetupAction: func(initialSetup bool) {
 			liveData.ConnectionStatus <- web.ConnectionStatusError
 			navigateChan <- setupURL
