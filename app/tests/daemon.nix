@@ -74,6 +74,30 @@ pkgs.testers.runNixOSTest {
       kiosk.wait_for_unit("wpa_supplicant.service")
       kiosk.wait_for_unit("nixos-kiosk.service")
 
+      with subtest("self-signed TLS cert is generated before nginx starts"):
+          kiosk.wait_for_unit("kiosk-gen-tls-cert.service")
+          kiosk.succeed("test -f /var/lib/nixos-kiosk/captive-portal.crt")
+          kiosk.succeed("test -f /var/lib/nixos-kiosk/captive-portal.key")
+
+      with subtest("HTTP catch-all redirects with 302 not 301"):
+          code = kiosk.succeed(
+              "curl -s -o /dev/null -w '%{http_code}'"
+              " -H 'Host: captive.apple.com'"
+              " http://127.0.0.1/"
+          ).strip()
+          if code != "302":
+              raise Exception(f"Expected 302 from HTTP catch-all, got {code!r}")
+
+      with subtest("HTTPS catch-all responds on port 443 with 302"):
+          # -k: ignore self-signed cert; we just verify the port is listening
+          # and returns a redirect rather than connection refused.
+          code = kiosk.succeed(
+              "curl -k -s -o /dev/null -w '%{http_code}'"
+              " https://127.0.0.1/"
+          ).strip()
+          if code != "302":
+              raise Exception(f"Expected 302 from HTTPS catch-all, got {code!r}")
+
       with subtest("initial state: kiosk displays manage page"):
           url = get_current_url()
           expected = "http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
