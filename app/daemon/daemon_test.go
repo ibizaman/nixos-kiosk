@@ -10,8 +10,9 @@ import (
 )
 
 type mockNM struct {
-	getActive func(id string) (*networkmanager.ActiveConnection, error)
-	getSaved  func(id string) (*networkmanager.SavedConnection, error)
+	getActive      func(id string) (*networkmanager.ActiveConnection, error)
+	getSaved       func(id string) (*networkmanager.SavedConnection, error)
+	disconnectFunc func(path string) error
 
 	apCalls      []string
 	connectCalls []string
@@ -46,6 +47,9 @@ func (m *mockNM) WaitWhileConnecting(path string, timeout time.Duration) (string
 }
 
 func (m *mockNM) Disconnect(path string) error {
+	if m.disconnectFunc != nil {
+		return m.disconnectFunc(path)
+	}
 	return nil
 }
 
@@ -294,6 +298,87 @@ func TestSetupModeAfterGracePeriodExpires(t *testing.T) {
 	}
 	if len(nm.apCalls) == 0 {
 		t.Error("AP never recreated after grace period expired")
+	}
+}
+
+func TestAPDisconnectedWhenWiFiConnects(t *testing.T) {
+	// When WiFi becomes active, the daemon must disconnect the AP profile.
+	var disconnectCalls []string
+	nm := &mockNM{
+		getActive: func(id string) (*networkmanager.ActiveConnection, error) {
+			if id == "kiosk" {
+				return activated(), nil
+			}
+			if id == "kiosk-ap" {
+				return &networkmanager.ActiveConnection{
+					ID:    "kiosk-ap",
+					Path:  "/mock/ap/path",
+					State: uint32(networkmanager.NMActiveConnectionStateActivated),
+				}, nil
+			}
+			return nil, nil
+		},
+		getSaved: func(id string) (*networkmanager.SavedConnection, error) {
+			if id == "kiosk" {
+				return savedKiosk("HomeWifi"), nil
+			}
+			return nil, nil
+		},
+	}
+	nm.disconnectFunc = func(path string) error {
+		disconnectCalls = append(disconnectCalls, path)
+		return nil
+	}
+
+	runWatcher(t, nm, Config{
+		IP:           "192.168.4.1",
+		Prefix:       24,
+		SetupAction:  func(bool) {},
+		NormalAction: func(string) {},
+	}, 50*time.Millisecond)
+
+	if len(disconnectCalls) == 0 {
+		t.Error("Disconnect never called when WiFi connected; AP should be torn down")
+	}
+	for _, p := range disconnectCalls {
+		if p != "/mock/ap/path" {
+			t.Errorf("Disconnect called with path %q, want %q", p, "/mock/ap/path")
+		}
+	}
+}
+
+func TestAPNotDisconnectedWhenNotActive(t *testing.T) {
+	// If there is no active AP when WiFi connects, Disconnect must not be called.
+	nm := &mockNM{
+		getActive: func(id string) (*networkmanager.ActiveConnection, error) {
+			if id == "kiosk" {
+				return activated(), nil
+			}
+			return nil, nil // no AP active
+		},
+		getSaved: func(id string) (*networkmanager.SavedConnection, error) {
+			if id == "kiosk" {
+				return savedKiosk("HomeWifi"), nil
+			}
+			return nil, nil
+		},
+	}
+
+	var disconnectCalled bool
+	nm.disconnectFunc = func(string) error {
+		disconnectCalled = true
+		return nil
+	}
+
+	runWatcher(t, nm, Config{
+		IP:           "192.168.4.1",
+		Prefix:       24,
+		SetupAction:  func(bool) {},
+		NormalAction: func(string) {},
+	}, 50*time.Millisecond)
+
+	if disconnectCalled {
+		t.Error("Disconnect called when no AP was active")
 	}
 }
 
