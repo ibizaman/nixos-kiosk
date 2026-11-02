@@ -88,6 +88,24 @@ in
       default = "Kiosk Setup";
     };
 
+    connectivityCheckHost = lib.mkOption {
+      type = lib.types.str;
+      default = "www.github.com";
+      description = ''
+        Host TCP-dialled on port 443 to confirm internet access before
+        switching to normal mode.
+      '';
+    };
+
+    ntpServer = lib.mkOption {
+      type = lib.types.str;
+      default = "0.nixos.pool.ntp.org";
+      description = ''
+        NTP server queried over UDP/123 to sync the clock once internet
+        is confirmed.
+      '';
+    };
+
     hostname = lib.mkOption {
       type = lib.types.str;
       default = "magic-frame";
@@ -132,9 +150,10 @@ in
 
       serviceConfig = {
         Type = "notify";
-        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json --connectivity-check-host ${cfg.connectivityCheckHost} --ntp-server ${cfg.ntpServer}";
         User = "kiosk-controller";
         Restart = "always";
+        AmbientCapabilities = [ "CAP_SYS_TIME" ];
       };
       environment = (
         lib.optionalAttrs (cfg.fixedInsecureKioskPassword != null) {
