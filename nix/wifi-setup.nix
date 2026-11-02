@@ -16,7 +16,7 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Disable kiosk for debugging.
+        Set to false to disable kiosk mode for debugging (shows browser chrome).
       '';
     };
 
