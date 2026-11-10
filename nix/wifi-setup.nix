@@ -108,7 +108,7 @@ in
 
     hostname = lib.mkOption {
       type = lib.types.str;
-      default = "magic-frame";
+      default = "nixos-kiosk";
       description = ''
         mDNS hostname for the kiosk. The device will be reachable at
         <hostname>.local on the network. Also used as the nginx virtual host.

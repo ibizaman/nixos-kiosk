@@ -104,7 +104,7 @@
               }:
               {
                 kiosk.enable = true;
-                networking.hostName = "magic-frame";
+                networking.hostName = "nixos-kiosk";
 
                 system.nixos.tags =
                   let

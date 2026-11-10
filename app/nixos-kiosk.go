@@ -135,7 +135,7 @@ func main() {
 					&cli.StringFlag{
 						Name:  "hostname",
 						Usage: "mDNS hostname for the kiosk (without .local)",
-						Value: "magic-frame",
+						Value: "nixos-kiosk",
 					},
 				},
 				Action: serve,
@@ -229,7 +229,7 @@ func main() {
 					&cli.StringFlag{
 						Name:  "hostname",
 						Usage: "mDNS hostname for the kiosk (without .local)",
-						Value: "magic-frame",
+						Value: "nixos-kiosk",
 					},
 					&cli.StringFlag{
 						Name:  "settings-path",
@@ -512,9 +512,9 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	listenAddr := fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port"))
 	liveData, errChan := web.Start(ctx, n, web.ServerConfig{
-		Addr:        listenAddr,
-		HotspotSSID: ssid,
-		HotspotPSK:  password,
+		Addr:         listenAddr,
+		HotspotSSID:  ssid,
+		HotspotPSK:   password,
 		SettingsPath: cmd.String("settings-path"),
 		DefaultSettings: web.Settings{
 			MDNSHostname: cmd.String("hostname"),
@@ -582,4 +582,3 @@ func genPassword() string {
 	}
 	return string(b)
 }
-
