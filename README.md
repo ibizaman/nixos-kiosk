@@ -1,35 +1,33 @@
-# Magic Kiosk
+# NixOS Kiosk
 
-Create a Kiosk appliance with NixOS.
+**Create a Kiosk appliance with NixOS.**
 
-Supports Raspberry Pi 2 and 3.
+This repo provides a few NixOS module to create an appliance kiosk.
+It does not provide a full working system, it should be combined for example
+with [github:ibizaman/nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi).
 
-## Usage
+## Features
 
 When no WiFi is configured the device acts as an access point and
-displays a setup form where you can enter your network credentials:
+displays a setup form where you can enter your network credentials.
+
+Either configure the WiFi from the interface or use the QR Code
+to connect your mobile device to the Access Point of the device
+and configure it from there.
 
 ![WiFi setup form](screenshots/setup-form.png)
 
-When connected, the WiFi is still configurable:
+Upon WiFi connection, the device will auto-switch to display
+a configured hardcoded URL.
+
+The WiFi is still configurable even if the device is connected:
 
 ![WiFi is connected](screenshots/connected.png)
 
-## Setup
+## Usage
 
-1. Build the sdcard image:
-
-   ```bash
-   nix build .#sdImages.nixos-kiosk-rpi3
-   ```
-
-2. Burn on sdcard:
-
-   ```bash
-   nix run nixpkgs#usbimager
-   ```
-
-3. Boot RPI
+Follow the flakes in the examples/ folder.
+See their respective README.md files for build commands.
 
 ## Develop
 

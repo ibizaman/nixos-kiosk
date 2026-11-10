@@ -12,45 +12,58 @@ jobs:
     secrets:
       nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
+  find-examples:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: find
+        run: |
+          matrix=$(find examples -mindepth 2 -maxdepth 2 -name 'flake.nix' \
+            | xargs dirname | sort \
+            | jq -R -c '{"path": ., "name": (split("/") | last)}' \
+            | jq -sc '{"include": .}')
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
   build-images:
+    needs: find-examples
+    strategy:
+      matrix: ${{ fromJson(needs.find-examples.outputs.matrix) }}
     uses: nixbuild/nixbuild-action/.github/workflows/ci-workflow.yml@v27
     with:
-      filter_builds: '.top_attr == "packages" and (.attr | startswith("sdimage"))'
+      flake: ./${{ matrix.path }}
+      filter_builds: '.top_attr == "nixosConfigurations" and .attr == "default"'
     secrets:
       nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
   upload-images:
-    name: Upload SD Image (${{ matrix.config }})
+    name: Upload SD Image (${{ matrix.name }})
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: [checks, build-images]
+    needs: [checks, build-images, find-examples]
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - config: nixos-kiosk-rpi3
-            package: packages.aarch64-linux.sdimage-rpi3
-          - config: nixos-kiosk-rpi2
-            package: packages.armv7l-linux.sdimage-rpi2
+      matrix: ${{ fromJson(needs.find-examples.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: |
-            extra-substituters = https://nixos-kiosk.cachix.org https://ibizaman.cachix.org https://nixos-raspberrypi.cachix.org
-            extra-trusted-public-keys = ibizaman.cachix.org-1:Y8cRpAoeMfeeUp1jRG5KuwoVteZOQLG4HYkYyT4TC8k= nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
+            extra-substituters = https://nixos-kiosk.cachix.org https://nixos-raspberrypi.cachix.org
+            extra-trusted-public-keys = nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
 
       - uses: nixbuild/nixbuild-action@v27
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
       - name: Download SD image
-        run: nix build .#${{ matrix.package }} -o result
+        run: nix build ./${{ matrix.path }}#nixosConfigurations.default.config.system.build.sdImage -o result
 
       - name: Upload SD image
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.config }}
+          name: nixos-kiosk-${{ matrix.name }}
           path: result/*.img.zst
           if-no-files-found: error
