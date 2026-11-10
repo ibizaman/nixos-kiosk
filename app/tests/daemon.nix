@@ -55,6 +55,7 @@ pkgs.testers.runNixOSTest {
     ];
 
     test.vwifi-client.mac = "74:F8:F6:00:02";
+    test.vwifi-client.ip = "192.168.1.4";
 
     kiosk.enable = true;
     kiosk.connectivityCheckHost = "10.10.0.1";
