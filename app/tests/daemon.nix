@@ -29,6 +29,18 @@ pkgs.testers.runNixOSTest {
     ];
 
     test.vwifi-client.mac = "74:F8:F6:00:01";
+
+    # Fake internet endpoint: the daemon TCP-dials connectivityCheckHost:443
+    # before switching to normal mode. In the VM there is no real internet, so
+    # mobile (the AP gateway at 10.10.0.1) acts as the stand-in.
+    networking.firewall.allowedTCPPorts = [ 443 ];
+    systemd.services.fake-connectivity = {
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:443,fork,reuseaddr /dev/null";
+        Restart = "always";
+      };
+    };
   };
 
   nodes.kiosk = {
@@ -45,6 +57,7 @@ pkgs.testers.runNixOSTest {
     test.vwifi-client.mac = "74:F8:F6:00:02";
 
     kiosk.enable = true;
+    kiosk.connectivityCheckHost = "10.10.0.1";
   };
 
   testScript =
