@@ -391,5 +391,42 @@ async function submitForm(formId, url, statusId, button) {
         }
     });
 })();
+
+// Auto-detect kiosk WiFi connecting in the background (e.g. firstboot).
+// Only active when in AP mode — the .badge.ap element only exists in that state.
+(function() {
+    if (!document.querySelector(".badge.ap")) return;
+    const statusEl = document.getElementById("wifi-status");
+
+    async function poll() {
+        try {
+            const resp = await fetch("/manage/wifi/kiosk-state");
+            const data = await resp.json();
+            if (data.status !== "ok") {
+                setTimeout(poll, 2000);
+                return;
+            }
+            if (data.state === "activating") {
+                const label = data.ssid ? `Connecting to ${data.ssid}…` : "Connecting to WiFi…";
+                statusEl.className = "status-msg info";
+                statusEl.textContent = label;
+                setTimeout(poll, 1000);
+            } else if (data.state === "activated") {
+                const label = data.ssid ? `Connected to ${data.ssid}. Reloading…` : "Connected. Reloading…";
+                statusEl.className = "status-msg success";
+                statusEl.textContent = label;
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                // none or deactivated — keep polling in case firstboot hasn't run yet
+                statusEl.className = "status-msg hidden";
+                setTimeout(poll, 2000);
+            }
+        } catch (_) {
+            setTimeout(poll, 2000);
+        }
+    }
+
+    setTimeout(poll, 1000);
+})();
 </script>
 </html>

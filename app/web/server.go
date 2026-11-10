@@ -34,8 +34,13 @@ type LiveData struct {
 }
 
 type Settings struct {
+	NormalURL    string `json:"normalUrl"`
 	UpdateURL    string `json:"updateUrl"`
 	MDNSHostname string `json:"mdnsHostname"`
+}
+
+func LoadSettings(path string, defaults Settings) Settings {
+	return loadSettings(path, defaults)
 }
 
 type ServerConfig struct {
@@ -70,6 +75,7 @@ func Start(ctx context.Context, nm *networkmanager.Client, cfg ServerConfig) (Li
 	mux.HandleFunc("GET /manage", managePage(nm, cfg, settingsMu))
 	mux.HandleFunc("POST /manage/wifi", wifiConnectPost(nm))
 	mux.HandleFunc("GET /manage/wifi/status", wifiStatusGet(nm))
+	mux.HandleFunc("GET /manage/wifi/kiosk-state", wifiKioskStateGet(nm))
 	mux.HandleFunc("POST /manage/settings", settingsPost(cfg, settingsMu))
 	mux.HandleFunc("/wifi.png", qrcodeImage(cfg.HotspotSSID, cfg.HotspotPSK))
 
@@ -248,6 +254,38 @@ func wifiStatusGet(nm *networkmanager.Client) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, wifiStatusResponse{Status: "ok", State: ac.StateName})
+	}
+}
+
+type wifiKioskStateResponse struct {
+	Status string `json:"status"`
+	State  string `json:"state"`
+	SSID   string `json:"ssid,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// wifiKioskStateGet returns the current state of the "kiosk" active connection
+// so the page can auto-detect a firstboot WiFi connection in progress.
+func wifiKioskStateGet(nm *networkmanager.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s: [%s] %s", r.RemoteAddr, r.Method, r.RequestURI)
+
+		ac, err := nm.GetActiveConnectionByID("kiosk")
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, wifiKioskStateResponse{Status: "error", Error: err.Error()})
+			return
+		}
+		if ac == nil {
+			writeJSON(w, http.StatusOK, wifiKioskStateResponse{Status: "ok", State: "none"})
+			return
+		}
+
+		var ssid string
+		if info, err := nm.GetActiveWifiInfo(); err == nil && info != nil {
+			ssid = info.SSID
+		}
+
+		writeJSON(w, http.StatusOK, wifiKioskStateResponse{Status: "ok", State: ac.StateName, SSID: ssid})
 	}
 }
 

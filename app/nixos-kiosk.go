@@ -545,7 +545,12 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		},
 		NormalAction: func(ssid string) {
 			liveData.ConnectionStatus <- web.ConnectionStatusSuccess
-			navigateChan <- cmd.StringArg("URL")
+			s := web.LoadSettings(cmd.String("settings-path"), web.Settings{})
+			normalURL := s.NormalURL
+			if normalURL == "" {
+				normalURL = cmd.StringArg("URL")
+			}
+			navigateChan <- normalURL
 		},
 	}
 	liveData.ConnectionStatus <- web.ConnectionStatusInitial
