@@ -77,6 +77,7 @@
                 app-networkmanager = mkCheck ./app/tests/networkmanager.nix;
                 app-chromium = mkCheck ./app/tests/chromium.nix;
                 app-daemon = mkCheck ./app/tests/daemon.nix;
+                app-firstboot = mkCheck ./app/tests/firstboot.nix;
               }
             );
           };
@@ -86,6 +87,7 @@
             fake-wifi = ./nix/fake-wifi.nix;
             appliance = ./nix/appliance.nix;
             nixos-kiosk = ./nix/wifi-setup.nix;
+            firstboot = ./nix/firstboot.nix;
           };
         };
       };
