@@ -108,6 +108,7 @@
               }:
               {
                 kiosk.enable = true;
+                kiosk.firstboot.enable = true;
                 networking.hostName = "nixos-kiosk";
 
                 system.nixos.tags =
@@ -135,6 +136,7 @@
                 self.nixosModules.rpi-common
                 nixos-kiosk.nixosModules.appliance
                 nixos-kiosk.nixosModules.nixos-kiosk
+                nixos-kiosk.nixosModules.firstboot
               ];
             };
 
@@ -150,6 +152,7 @@
                 self.nixosModules.rpi-common
                 nixos-kiosk.nixosModules.appliance
                 nixos-kiosk.nixosModules.nixos-kiosk
+                nixos-kiosk.nixosModules.firstboot
               ];
             };
           };

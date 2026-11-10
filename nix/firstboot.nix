@@ -8,6 +8,11 @@
 
 let
   cfg = config.kiosk.firstboot;
+  # config.kiosk.hostname is defined by wifi-setup.nix; fall back gracefully
+  # if this module is used without it.
+  compiledHostname = config.kiosk.hostname or "nixos-kiosk";
+
+  hostnameStateFile = "/var/lib/nixos-kiosk/hostname";
 
   defaultConfig = pkgs.writeText "kiosk.conf" ''
     # Kiosk firstboot configuration
@@ -22,7 +27,7 @@ let
     wifi_password=
 
     # Device hostname (used for mDNS — device will be reachable at hostname.local)
-    hostname=nixos-kiosk
+    hostname=${compiledHostname}
 
     # URL the kiosk navigates to once connected to the internet
     # Leave empty to use the compiled-in default
@@ -36,7 +41,6 @@ let
     set -euo pipefail
 
     CONFIG=/boot/firmware/kiosk.conf
-    APPLIED=/boot/firmware/kiosk.conf.applied
 
     if [ ! -f "$CONFIG" ]; then
       echo "No firstboot config at $CONFIG, skipping."
@@ -56,25 +60,28 @@ let
     update_url=$(parse_value update_url)
 
     if [ -n "$wifi_ssid" ]; then
-      echo "Writing WiFi profile for: $wifi_ssid"
-      mkdir -p /etc/NetworkManager/system-connections
-      PROFILE=/etc/NetworkManager/system-connections/kiosk-firstboot.nmconnection
-      uuid=$(${pkgs.util-linux}/bin/uuidgen)
+      echo "Configuring WiFi: $wifi_ssid"
+      # Remove any existing kiosk profile so we can replace it cleanly.
+      ${pkgs.networkmanager}/bin/nmcli connection delete kiosk 2>/dev/null || true
 
-      printf '[connection]\nid=kiosk-firstboot\nuuid=%s\ntype=wifi\nautoconnect=true\n\n' "$uuid" > "$PROFILE"
-      printf '[wifi]\nmode=infrastructure\nssid=%s\n\n' "$wifi_ssid" >> "$PROFILE"
-
+      nmcli_args=(connection add type wifi con-name kiosk ssid "$wifi_ssid" connection.autoconnect yes)
       if [ -n "$wifi_password" ]; then
-        printf '[wifi-security]\nauth-alg=open\nkey-mgmt=wpa-psk\npsk=%s\n\n' "$wifi_password" >> "$PROFILE"
+        nmcli_args+=(wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wifi_password")
       fi
+      ${pkgs.networkmanager}/bin/nmcli "''${nmcli_args[@]}"
 
-      printf '[ipv4]\nmethod=auto\n\n[ipv6]\naddr-gen-mode=default\nmethod=auto\n' >> "$PROFILE"
-      chmod 600 "$PROFILE"
+      # Start connecting asynchronously so the daemon, which is already running
+      # in setup mode at this point, detects the "activating" connection and
+      # transitions from setup to normal mode.
+      ${pkgs.networkmanager}/bin/nmcli connection up kiosk --wait 0 || true
     fi
 
     if [ -n "$hostname" ]; then
-      echo "Setting hostname: $hostname"
-      ${pkgs.systemd}/bin/hostnamectl set-hostname "$hostname"
+      echo "Persisting hostname: $hostname"
+      # Write to state file so kiosk-apply-hostname.service re-applies on every boot,
+      # even after nixos-activation rewrites /etc/hostname to the compiled-in value.
+      printf '%s' "$hostname" > ${hostnameStateFile}
+      chown kiosk-controller:kiosk-controller ${hostnameStateFile} 2>/dev/null || true
     fi
 
     SETTINGS=/var/lib/nixos-kiosk/settings.json
@@ -95,8 +102,8 @@ let
     chown kiosk-controller:kiosk-controller "$SETTINGS" 2>/dev/null || true
     chmod 640 "$SETTINGS"
 
-    echo "Done. Renaming $CONFIG to $APPLIED"
-    mv "$CONFIG" "$APPLIED"
+    echo "Done. Renaming $CONFIG to $CONFIG.applied"
+    mv "$CONFIG" "$CONFIG.applied"
   '';
 
   initScript = pkgs.writeShellScript "kiosk-firstboot-init" ''
@@ -113,6 +120,24 @@ let
     mkdir -p /boot/firmware
     cp ${defaultConfig} "$CONFIG"
   '';
+
+  applyHostnameScript = pkgs.writeShellScript "kiosk-apply-hostname" ''
+    set -euo pipefail
+
+    STATE=${hostnameStateFile}
+
+    if [ ! -f "$STATE" ]; then
+      exit 0
+    fi
+
+    hostname=$(cat "$STATE")
+    if [ -z "$hostname" ]; then
+      exit 0
+    fi
+
+    echo "Restoring hostname: $hostname"
+    ${pkgs.systemd}/bin/hostnamectl set-hostname "$hostname"
+  '';
 in
 {
   options.kiosk.firstboot = {
@@ -121,8 +146,12 @@ in
 
   config = lib.mkIf cfg.enable (
     {
+      # When firstboot is enabled, let avahi follow the runtime system hostname
+      # (set by kiosk-apply-hostname.service) rather than the compile-time NixOS value.
+      # An empty string makes the avahi module omit host-name= from its config.
+      services.avahi.hostName = lib.mkForce "";
+
       # Create the default kiosk.conf if neither .conf nor .applied exists.
-      # This runs at every boot but is a no-op once kiosk.conf.applied is present.
       systemd.services.kiosk-firstboot-init = {
         description = "Create default kiosk.conf on firmware partition if absent";
 
@@ -135,28 +164,56 @@ in
           RemainAfterExit = true;
           ExecStart = initScript;
         };
-  };
-
-    systemd.services.kiosk-firstboot = {
-      description = "Apply kiosk firstboot configuration from firmware partition";
-
-      wantedBy = [ "multi-user.target" ];
-      before = [
-        "NetworkManager.service"
-        "nixos-kiosk.service"
-      ];
-      after = [
-        "local-fs.target"
-        "systemd-tmpfiles-setup.service"
-          "kiosk-firstboot-init.service"
-      ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = applyScript;
       };
-    };
+
+      # Apply settings from kiosk.conf on first boot.
+      systemd.services.kiosk-firstboot = {
+        description = "Apply kiosk firstboot configuration from firmware partition";
+
+        wantedBy = [ "multi-user.target" ];
+        # Run after nixos-kiosk so the daemon is already in setup mode when
+        # firstboot adds and activates the WiFi connection.  The daemon then
+        # detects the "activating" connection and transitions to normal mode on
+        # its own, giving the user a brief view of the setup UI before the
+        # kiosk switches to the normal URL.
+        after = [
+          "NetworkManager.service"
+          "nixos-kiosk.service"
+          "local-fs.target"
+          "systemd-tmpfiles-setup.service"
+          "kiosk-firstboot-init.service"
+        ];
+
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = applyScript;
+        };
+      };
+
+      # Re-apply the persisted hostname on every boot, after nixos-activation
+      # has written the compile-time /etc/hostname.
+      systemd.services.kiosk-apply-hostname = {
+        description = "Restore kiosk firstboot hostname after NixOS activation";
+
+        wantedBy = [ "multi-user.target" ];
+        # nixos-activation overwrites /etc/hostname; run after it.
+        after = [
+          "nixos-activation.service"
+          "systemd-tmpfiles-setup.service"
+        ];
+        # avahi and NetworkManager should see the correct hostname from the start.
+        before = [
+          "avahi-daemon.service"
+          "NetworkManager.service"
+        ];
+
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = applyHostnameScript;
+        };
+      };
     }
     // lib.optionalAttrs (options ? sdImage) {
       # Bake the default kiosk.conf into the firmware partition of the SD image
