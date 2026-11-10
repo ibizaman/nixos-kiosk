@@ -30,6 +30,13 @@ pkgs.testers.runNixOSTest {
 
     test.vwifi-client.mac = "74:F8:F6:00:01";
 
+    # DHCP for clients connecting to the HomeWifi AP.
+    services.dnsmasq = {
+      enable = true;
+      settings.dhcp-range = [ "10.10.0.10,10.10.0.100,12h" ];
+    };
+    networking.firewall.allowedUDPPorts = [ 53 67 ];
+
     # Fake internet endpoint: the daemon TCP-dials connectivityCheckHost:443
     # before switching to normal mode. In the VM there is no real internet, so
     # mobile (the AP gateway at 10.10.0.1) acts as the stand-in.
