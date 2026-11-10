@@ -87,7 +87,7 @@ pkgs.testers.runNixOSTest {
     )
     kiosk.sleep(3)
     kiosk.succeed("nixos-kiosk chromium screenshot /tmp/setup-form.png")
-    kiosk.copy_from_vm("/tmp/setup-form.png", "")
+    kiosk.copy_from_machine("/tmp/setup-form.png", "")
 
     home_ssid = "HomeWifi"
     home_psk = "securepassword123"
@@ -120,6 +120,6 @@ pkgs.testers.runNixOSTest {
     )
     kiosk.sleep(3)
     kiosk.succeed("nixos-kiosk chromium screenshot /tmp/connected.png")
-    kiosk.copy_from_vm("/tmp/connected.png", "")
+    kiosk.copy_from_machine("/tmp/connected.png", "")
   '';
 }
