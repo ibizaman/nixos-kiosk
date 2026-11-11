@@ -21,13 +21,13 @@ jobs:
 
       - name: Check screenshots is up to date
         run: |
-          if ! diff -rq result-screenshots screenshots; then
+          if ! diff -rq result-screenshots docs/screenshots; then
             echo ""
-            echo "A file in screenshots/ is out of date."
+            echo "A file in docs/screenshots/ is out of date."
             echo "Run the following to update it:"
             echo ""
             echo "  nix build .#packages.x86_64-linux.screenshots -o result-screenshots"
-            echo "  cp -r result-screenshots/* screenshots/"
+            echo "  cp -r result-screenshots/* docs/screenshots/"
             echo ""
             exit 1
           fi
