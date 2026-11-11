@@ -8,6 +8,36 @@ with [github:ibizaman/nixos-raspberrypi](https://github.com/nvmd/nixos-raspberry
 
 ## Features
 
+Each feature can be imported individually with modules.
+
+### Appliance
+
+Disables unneeded features on the host to reduce attack surface and disk and memory usage.
+
+```nix
+{
+  imports = [ inputs.nixos-kiosk.nixosModules.appliance ];
+}
+```
+
+- Disables nix on the host.
+- Disables rebuilding the host.
+- Users are static.
+- Disables documentation.
+- Removes Perl from default packages.
+
+Uses [nixpkgs' image-based-appliance.nix profile](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/profiles/image-based-appliance.nix) under the hood.
+
+### WiFi
+
+Let's you setup the WiFi connection at runtime, after boot.
+
+```nix
+{
+  imports = [ inputs.nixos-kiosk.nixosModules.wifi-setup ];
+}
+```
+
 When no WiFi is configured the device acts as an access point and
 displays a setup form where you can enter your network credentials.
 
@@ -23,6 +53,26 @@ a configured hardcoded URL.
 The WiFi is still configurable even if the device is connected:
 
 ![WiFi is connected](screenshots/connected.png)
+
+### First Boot Config
+
+Let's you setup options after burning an image on an SD card.
+
+```nix
+{
+  imports = [ inputs.nixos-kiosk.nixosModules.firstboot ];
+
+  config = {
+    kiosk.firstboot.enable = true;
+  };
+}
+```
+
+Enabling this module generates a file `/boot/firmware/kiosk.conf`
+which you can tweak to configure the appliance before booting it
+for the first time.
+
+The default `kiosk.conf` file can be seen in [docs/kiosk.conf](docs/kiosk.conf).
 
 ## Usage
 
