@@ -14,28 +14,7 @@ let
 
   hostnameStateFile = "/var/lib/nixos-kiosk/hostname";
 
-  defaultConfig = pkgs.writeText "kiosk.conf" ''
-    # Kiosk firstboot configuration
-    # Edit this file before the first boot to pre-configure your device.
-    # Once the device boots, it applies these settings and renames this file
-    # to kiosk.conf.applied. To reconfigure, create a new kiosk.conf and reboot.
-
-    # WiFi network name (leave empty to skip WiFi setup)
-    wifi_ssid=
-
-    # WiFi password (leave empty for open networks)
-    wifi_password=
-
-    # Device hostname (used for mDNS — device will be reachable at hostname.local)
-    hostname=${compiledHostname}
-
-    # URL the kiosk navigates to once connected to the internet
-    # Leave empty to use the compiled-in default
-    normal_url=
-
-    # URL for firmware updates (leave empty to disable)
-    update_url=
-  '';
+  defaultConfig = import ./default-kiosk-conf.nix { inherit pkgs; hostname = compiledHostname; };
 
   applyScript = pkgs.writeShellScript "kiosk-firstboot" ''
     set -euo pipefail
