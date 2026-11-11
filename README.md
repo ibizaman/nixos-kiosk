@@ -3,12 +3,21 @@
 **Create a Kiosk appliance with NixOS.**
 
 This repo provides a few NixOS module to create an appliance kiosk.
-It does not provide a full working system, it should be combined for example
-with [github:ibizaman/nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi).
+It does not provide a full working system, it should be used
+in a full-fledged NixOS configuration. See the [examples](examples/)
+for integration examples.
+
+Currently, it is tested exclusively for Raspberry Pi 3
+with [github:ibizaman/nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi). So usage with other systems might not work out of the box.
+Feel free to open issues!
 
 ## Features
 
 Each feature can be imported individually with modules.
+
+- [Appliance module](#appliance): disables unneeded features.
+- [Wifi module](#wifi): allow to setup WiFi connection at runtime.
+- [Firstboot module](#first-boot-config): allow to configure some options without rebuilding the SD card.
 
 ### Appliance
 
