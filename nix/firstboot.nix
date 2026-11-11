@@ -40,6 +40,12 @@ let
 
     if [ -n "$wifi_ssid" ]; then
       echo "Configuring WiFi: $wifi_ssid"
+
+      if [ -n "$wifi_password" ] && [ "''${#wifi_password}" -lt 8 ]; then
+        echo "Error: wifi_password must be at least 8 characters (WPA2 requirement)" >&2
+        exit 1
+      fi
+
       # Remove any existing kiosk profile so we can replace it cleanly.
       ${pkgs.networkmanager}/bin/nmcli connection delete kiosk 2>/dev/null || true
 
