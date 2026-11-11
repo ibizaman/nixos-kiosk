@@ -55,6 +55,10 @@
             formatter = pkgs.nixfmt-tree;
 
             checks = lib.optionalAttrs pkgs.stdenv.isLinux {};
+
+            packages = lib.optionalAttrs (system == "aarch64-linux") {
+              sdimage = self.nixosConfigurations.default.config.system.build.sdImage;
+            };
           };
 
         flake = {

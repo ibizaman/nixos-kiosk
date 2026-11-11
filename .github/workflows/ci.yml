@@ -33,7 +33,7 @@ jobs:
     uses: nixbuild/nixbuild-action/.github/workflows/ci-workflow.yml@v27
     with:
       flake: ./${{ matrix.path }}
-      filter_builds: '.top_attr == "nixosConfigurations" and .attr == "default"'
+      filter_builds: '.top_attr == "packages" and .attr == "sdimage"'
     secrets:
       nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
@@ -65,5 +65,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nixos-kiosk-${{ matrix.name }}
-          path: result/*.img.zst
+          path: result/**/*.img.zst
           if-no-files-found: error
