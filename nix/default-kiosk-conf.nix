@@ -11,7 +11,7 @@ pkgs.writeText "kiosk.conf" ''
   # WiFi network name (leave empty to skip WiFi setup)
   wifi_ssid=
 
-  # WiFi password (leave empty for open networks)
+  # WiFi password (leave empty for open networks, minimum 8 characters for WPA2)
   wifi_password=
 
   # Device hostname (used for mDNS — device will be reachable at hostname.local)

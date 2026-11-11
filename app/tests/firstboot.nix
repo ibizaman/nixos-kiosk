@@ -32,7 +32,7 @@ pkgs.testers.runNixOSTest {
           cat > /boot/firmware/kiosk.conf << 'EOF'
 # test config
 wifi_ssid=TestNetwork
-wifi_password=s3cr3t
+wifi_password=s3cr3tpw
 hostname=test-kiosk
 normal_url=http://test.example.com/display
 update_url=http://update.example.com
@@ -88,7 +88,7 @@ EOF
 
     with subtest("with_config: kiosk-firstboot.service completes"):
         with_config.wait_for_unit("kiosk-firstboot.service")
-        with_config.succeed("journalctl -u kiosk-firstboot.service --no-pager -n 50")
+        with_config.log(with_config.succeed("journalctl -u kiosk-firstboot.service --no-pager -n 50"))
 
     with subtest("with_config: kiosk.conf consumed and renamed to .applied"):
         with_config.succeed("test ! -f /boot/firmware/kiosk.conf")
