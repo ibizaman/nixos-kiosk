@@ -45,14 +45,14 @@ Either configure the WiFi from the interface or use the QR Code
 to connect your mobile device to the Access Point of the device
 and configure it from there.
 
-![WiFi setup form](screenshots/setup-form.png)
+![WiFi setup form](docs/screenshots/setup-form.png)
 
 Upon WiFi connection, the device will auto-switch to display
 a configured hardcoded URL.
 
 The WiFi is still configurable even if the device is connected:
 
-![WiFi is connected](screenshots/connected.png)
+![WiFi is connected](docs/screenshots/connected.png)
 
 ### First Boot Config
 
