@@ -57,6 +57,9 @@ pkgs.testers.runNixOSTest {
     kiosk.fixedInsecureKioskPassword = "12345678";
 
     boot.kernelParams = [ "video=1280x1024" ];
+    # cage (Wayland) needs a KMS-capable DRM device. The default QEMU VGA does
+    # not expose one in headless/CI environments; virtio-gpu-pci does.
+    virtualisation.qemu.options = [ "-vga none -device virtio-gpu-pci" ];
   };
 
   testScript = ''
