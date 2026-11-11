@@ -50,6 +50,7 @@
 
             packages = {
               nixos-kiosk = pkgs.callPackage ./nix/package.nix { };
+              kiosk-conf = import ./nix/default-kiosk-conf.nix { inherit pkgs; };
             }
             // lib.optionalAttrs (system == "x86_64-linux") {
               screenshots =
