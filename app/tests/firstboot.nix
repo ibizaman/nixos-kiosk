@@ -1,6 +1,5 @@
 {
   pkgs,
-  nixos-kiosk,
   ...
 }:
 pkgs.testers.runNixOSTest {
@@ -9,7 +8,7 @@ pkgs.testers.runNixOSTest {
   nodes = {
     # Node with a pre-populated kiosk.conf containing all supported fields.
     with_config =
-      { lib, ... }:
+      { ... }:
       {
         imports = [
           ../../nix/wifi-setup.nix
@@ -22,6 +21,10 @@ pkgs.testers.runNixOSTest {
         environment.systemPackages = [
           pkgs.jq
         ];
+
+        # mac80211_hwsim provides a virtual WiFi device so that
+        # `nmcli connection add type wifi` succeeds in the headless VM.
+        boot.kernelModules = [ "mac80211_hwsim" ];
 
         # Populate kiosk.conf before systemd starts so kiosk-firstboot.service finds it.
         boot.postBootCommands = ''
@@ -39,7 +42,7 @@ EOF
 
     # Node with no kiosk.conf — init service creates the default; apply runs but is a no-op.
     no_config =
-      { lib, ... }:
+      { ... }:
       {
         imports = [
           ../../nix/wifi-setup.nix
@@ -57,7 +60,7 @@ EOF
 
     # Node with only kiosk.conf.applied — init service skips; apply service skips.
     already_applied =
-      { lib, ... }:
+      { ... }:
       {
         imports = [
           ../../nix/wifi-setup.nix
@@ -85,6 +88,7 @@ EOF
 
     with subtest("with_config: kiosk-firstboot.service completes"):
         with_config.wait_for_unit("kiosk-firstboot.service")
+        with_config.succeed("journalctl -u kiosk-firstboot.service --no-pager -n 50")
 
     with subtest("with_config: kiosk.conf consumed and renamed to .applied"):
         with_config.succeed("test ! -f /boot/firmware/kiosk.conf")
