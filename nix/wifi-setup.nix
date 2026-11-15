@@ -126,6 +126,16 @@ in
       '';
     };
 
+    persistBrowserSession = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Persist the Chromium profile across reboots by storing it under
+        /var/lib/nixos-kiosk/chromium. Cookies, localStorage, and cached
+        OAuth tokens survive restarts, so a one-time login is sufficient.
+      '';
+    };
+
   };
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
@@ -147,7 +157,8 @@ in
 
     systemd.tmpfiles.rules = [
       "d /var/lib/nixos-kiosk 0750 kiosk-controller kiosk-controller -"
-    ];
+    ] ++ lib.optional cfg.persistBrowserSession
+      "d /var/lib/nixos-kiosk/chromium 0750 frame frame -";
 
     # Always active
     systemd.services.nixos-kiosk = {
@@ -268,6 +279,7 @@ in
                 fi
                 chromium \
                   ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
+                  ${lib.optionalString cfg.persistBrowserSession "--user-data-dir=/var/lib/nixos-kiosk/chromium "}\
                   --ozone-platform=wayland \
                   --no-first-run \
                   --hide-cursor \
