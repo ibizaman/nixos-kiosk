@@ -136,6 +136,15 @@ in
       '';
     };
 
+    onScreenKeyboard = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Start wvkbd-mobintl as a background process inside the cage session,
+        providing an on-screen keyboard for touchscreen input.
+      '';
+    };
+
   };
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
@@ -260,7 +269,8 @@ in
               [
                 pkgs.chromium
                 pkgs.wlr-randr
-              ];
+              ]
+              ++ lib.optional cfg.onScreenKeyboard pkgs.wvkbd;
           text =
             if cfg.showJournal then
               ''
@@ -269,7 +279,7 @@ in
             else
               ''
                 # State file written by kiosk-firstboot overrides the compile-time default.
-                _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation}")
+                _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation or "none"}")
                 if [ "$_ROTATION" = "right" ]; then
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
                   wlr-randr --output "$_OUTPUT" --transform 90 || true
@@ -277,6 +287,7 @@ in
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
                   wlr-randr --output "$_OUTPUT" --transform 270 || true
                 fi
+                ${lib.optionalString cfg.onScreenKeyboard "wvkbd-mobintl &"}
                 chromium \
                   ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
                   ${lib.optionalString cfg.persistBrowserSession "--user-data-dir=/var/lib/nixos-kiosk/chromium "}\
