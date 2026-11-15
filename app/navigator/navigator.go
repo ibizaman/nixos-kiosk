@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,10 @@ type Config struct {
 	NewClient func() Client
 	// PollInterval between URL checks. Zero defaults to 5 seconds.
 	PollInterval time.Duration
+	// URLPrefix, if non-empty, redirects only when the current URL does not
+	// start with this prefix. Useful for multi-page sites such as a Home
+	// Assistant dashboard where the path changes as the user navigates.
+	URLPrefix string
 }
 
 func (c Config) pollInterval() time.Duration {
@@ -71,7 +76,15 @@ func Run(ctx context.Context, cfg Config, navigateChan <-chan string) {
 		if targetURL != "" {
 			c := cfg.NewClient()
 			currentURL, err := c.GetCurrentURL()
-			if err != nil || currentURL != targetURL {
+			drifted := err != nil
+			if !drifted {
+				if cfg.URLPrefix != "" {
+					drifted = !strings.HasPrefix(currentURL, cfg.URLPrefix)
+				} else {
+					drifted = currentURL != targetURL
+				}
+			}
+			if drifted {
 				closeWS, err := c.Connect()
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "navigator: could not connect to websocket: %s\n", err)

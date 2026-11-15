@@ -115,6 +115,17 @@ in
       '';
     };
 
+    urlPrefix = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = ''
+        If non-empty, the navigator only redirects Chromium when the current
+        URL does not start with this prefix. Useful for multi-page sites where
+        the user navigates to sub-pages (e.g. set to the site's origin so any
+        page under that origin is considered "correct").
+      '';
+    };
+
   };
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
@@ -152,7 +163,8 @@ in
 
       serviceConfig = {
         Type = "notify";
-        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json --connectivity-check-host ${cfg.connectivityCheckHost} --ntp-server ${cfg.ntpServer}";
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json --connectivity-check-host ${cfg.connectivityCheckHost} --ntp-server ${cfg.ntpServer}"
+            + lib.optionalString (cfg.urlPrefix != "") " --url-prefix '${cfg.urlPrefix}'";
         User = "kiosk-controller";
         Restart = "always";
         AmbientCapabilities = [ "CAP_SYS_TIME" ];

@@ -244,6 +244,10 @@ func main() {
 						Name:  "ntp-server",
 						Usage: "NTP server to sync the clock after connectivity is confirmed (default: 0.nixos.pool.ntp.org)",
 					},
+					&cli.StringFlag{
+						Name:  "url-prefix",
+						Usage: "if set, only redirect when the current URL does not start with this prefix",
+					},
 				},
 				Action: startDaemon,
 			},
@@ -492,6 +496,7 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 			c := chromium.NewClient("127.0.0.1", port)
 			return &c
 		},
+		URLPrefix: cmd.String("url-prefix"),
 	}, navigateChan)
 
 	n, err := networkmanager.NewClient()

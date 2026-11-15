@@ -194,6 +194,50 @@ func TestLatestURLWins(t *testing.T) {
 	}
 }
 
+func TestURLPrefixNoNavigationOnSubPage(t *testing.T) {
+	// Browser is on a sub-page under the prefix — navigator must not redirect.
+	mock := &mockClient{currentURL: "http://dashboard.local/lovelace/kitchen"}
+	ch := make(chan string, 1)
+	ch <- "http://localhost:8000/manage"
+
+	cfg := Config{
+		NewClient:    func() Client { return mock },
+		PollInterval: 10 * time.Millisecond,
+		URLPrefix:    "http://dashboard.local",
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	Run(ctx, cfg, ch)
+
+	if calls := mock.getNavigateCalls(); len(calls) != 0 {
+		t.Errorf("Navigate called %d times, want 0 (URL is under prefix)", len(calls))
+	}
+}
+
+func TestURLPrefixNavigatesWhenOffPrefix(t *testing.T) {
+	// Browser drifted to an unrelated page — navigator must redirect to target.
+	mock := &mockClient{currentURL: "http://other.site/page"}
+	ch := make(chan string, 1)
+	ch <- "http://localhost:8000/manage"
+
+	cfg := Config{
+		NewClient:    func() Client { return mock },
+		PollInterval: 10 * time.Millisecond,
+		URLPrefix:    "http://dashboard.local",
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	Run(ctx, cfg, ch)
+
+	calls := mock.getNavigateCalls()
+	if len(calls) == 0 {
+		t.Fatal("Navigate never called (URL was outside prefix)")
+	}
+	if calls[0] != "http://localhost:8000/manage" {
+		t.Errorf("Navigate called with %q, want %q", calls[0], "http://localhost:8000/manage")
+	}
+}
+
 func TestNoNavigationWithoutURL(t *testing.T) {
 	mock := &mockClient{}
 	ch := make(chan string)
