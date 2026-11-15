@@ -11,6 +11,19 @@ Currently, it is tested exclusively for Raspberry Pi 3
 with [github:ibizaman/nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi). So usage with other systems might not work out of the box.
 Feel free to open issues!
 
+## NixOS VM tests
+
+The best guarantee I have to offer is most if not all of the features presented here
+have [NixOS VM tests](./app/tests).
+As much as possible, I tried to avoid mocking any real component:
+
+- [`vwifi`](https://github.com/Raizo62/vwifi) is used to create real WiFi devices tunnelled over TCP between VMs. NetworkManager, `wpa_supplicant` and the AP/client handshake use real `wlan` devices.
+- `socat TCP-LISTEN:443` on the AP gateway VM creates a fake internet endpoint, so the daemon's TCP connectivity check passes without mocks.
+- Use of `mac80211_hwsim` to provide a virtual WiFi radio on nodes that need a WiFi device but no actual network traffic (like for the firstboot test).
+
+Also, the [screenshots](./docs/screenshots) and [kiosk.conf](./docs/kiosk.conf) files
+are generated and verified in CI so they will never drift.
+
 ## Features
 
 Each feature can be imported individually with modules.
