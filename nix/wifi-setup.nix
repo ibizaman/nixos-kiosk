@@ -115,7 +115,8 @@ in
       '';
     };
   };
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf cfg.enable (lib.mkMerge [
+    {
     environment.systemPackages = [
       pkgs.dig
       cfg.package
@@ -234,6 +235,7 @@ in
             else
               [
                 pkgs.chromium
+                pkgs.wlr-randr
               ];
           text =
             if cfg.showJournal then
@@ -242,6 +244,15 @@ in
               ''
             else
               ''
+                # State file written by kiosk-firstboot overrides the compile-time default.
+                _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation}")
+                if [ "$_ROTATION" = "right" ]; then
+                  _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
+                  wlr-randr --output "$_OUTPUT" --transform 90 || true
+                elif [ "$_ROTATION" = "left" ]; then
+                  _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
+                  wlr-randr --output "$_OUTPUT" --transform 270 || true
+                fi
                 chromium \
                   ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
                   --ozone-platform=wayland \
@@ -413,5 +424,6 @@ in
         "multi-user.target"
       ];
     };
-  };
+    }
+  ]);
 }

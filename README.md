@@ -35,6 +35,10 @@ Disables unneeded features on the host to reduce attack surface and disk and mem
 - Disables documentation.
 - Removes Perl from default packages.
 
+Options provided by this module:
+
+- `kiosk.screenRotation` (`none`/`left`/`right`): rotates the kernel console (`fbcon`) and Wayland output (`wlr-randr`). On Raspberry Pi, additionally set `hardware.raspberry-pi.config.all.options.display_rotate` to cover GRUB.
+
 Uses [nixpkgs' image-based-appliance.nix profile](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/profiles/image-based-appliance.nix) under the hood.
 
 ### WiFi
