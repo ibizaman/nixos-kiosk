@@ -36,6 +36,7 @@ wifi_password=s3cr3tpw
 hostname=test-kiosk
 normal_url=http://test.example.com/display
 update_url=http://update.example.com
+ssh_authorized_key=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyForNixOSKioskTest testkey
 EOF
         '';
       };

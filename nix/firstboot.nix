@@ -37,6 +37,7 @@ let
     hostname=$(parse_value hostname)
     normal_url=$(parse_value normal_url)
     update_url=$(parse_value update_url)
+    ssh_authorized_key=$(parse_value ssh_authorized_key)
 
     if [ -n "$wifi_ssid" ]; then
       echo "Configuring WiFi: $wifi_ssid"
@@ -72,6 +73,12 @@ let
       ${pkgs.systemd}/bin/hostnamectl set-hostname "$hostname"
       # Restart avahi so it picks up the new hostname right away.
       ${pkgs.systemd}/bin/systemctl try-restart avahi-daemon.service || true
+    fi
+
+    if [ -n "$ssh_authorized_key" ]; then
+      echo "Adding SSH authorized key for nixos user"
+      printf '%s\n' "$ssh_authorized_key" > /var/lib/nixos-kiosk/nixos-authorized-keys
+      chmod 644 /var/lib/nixos-kiosk/nixos-authorized-keys
     fi
 
     SETTINGS=/var/lib/nixos-kiosk/settings.json

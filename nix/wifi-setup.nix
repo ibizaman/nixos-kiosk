@@ -114,6 +114,7 @@ in
         <hostname>.local on the network. Also used as the nginx virtual host.
       '';
     };
+
   };
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {

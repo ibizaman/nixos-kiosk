@@ -14,6 +14,16 @@ in
   ];
 
   options.kiosk = {
+    sshAuthorizedKeys = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = ''
+        SSH public keys authorised for the nixos user.
+        An additional key can be supplied at first-boot via ssh_authorized_key
+        in kiosk.conf without rebuilding the image.
+      '';
+    };
+
     screenRotation = lib.mkOption {
       type = lib.types.enum [
         "none"
@@ -33,6 +43,26 @@ in
   };
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
+    {
+      services.openssh = {
+        enable = true;
+        settings.PasswordAuthentication = lib.mkDefault false;
+        # Keep the NixOS default path so openssh.authorizedKeys.keys still works,
+        # and add the runtime file written by firstboot.
+        authorizedKeysFiles = [
+          "%h/.ssh/authorized_keys"
+          "/etc/ssh/authorized_keys.d/%u"
+          "/var/lib/nixos-kiosk/nixos-authorized-keys"
+        ];
+      };
+
+      systemd.tmpfiles.rules = [
+        # Empty authorized_keys file for the nixos user; firstboot may append a key.
+        "f /var/lib/nixos-kiosk/nixos-authorized-keys 0644 root root -"
+      ];
+
+      users.users.nixos.openssh.authorizedKeys.keys = cfg.sshAuthorizedKeys;
+    }
     (lib.mkIf (cfg.screenRotation != "none") {
       boot.kernelParams = [
         "fbcon=rotate:${if cfg.screenRotation == "right" then "3" else "1"}"

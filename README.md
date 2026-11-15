@@ -38,6 +38,7 @@ Disables unneeded features on the host to reduce attack surface and disk and mem
 Options provided by this module:
 
 - `kiosk.screenRotation` (`none`/`left`/`right`): rotates the kernel console (`fbcon`) and Wayland output (`wlr-randr`). On Raspberry Pi, additionally set `hardware.raspberry-pi.config.all.options.display_rotate` to cover GRUB.
+- `kiosk.sshAuthorizedKeys`: list of SSH public keys baked into the image for the `nixos` user; password authentication is disabled by default. A key can also be provisioned without rebuilding via `ssh_authorized_key` in `kiosk.conf`.
 
 Uses [nixpkgs' image-based-appliance.nix profile](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/profiles/image-based-appliance.nix) under the hood.
 

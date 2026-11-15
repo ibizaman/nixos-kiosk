@@ -23,4 +23,8 @@ pkgs.writeText "kiosk.conf" ''
 
   # URL for firmware updates (leave empty to disable)
   update_url=
+
+  # SSH public key for the nixos user (allows key-based SSH login)
+  # Paste a full public key (e.g. the contents of ~/.ssh/id_ed25519.pub)
+  ssh_authorized_key=
 ''
