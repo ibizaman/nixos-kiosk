@@ -234,11 +234,8 @@ in
         "video"
         "render"
         "input"
-      ]
-      ++ (lib.optionals cfg.showJournal [
-        # To see all systemd logs
-        "wheel"
-      ]);
+        "systemd-journal"
+      ];
     };
     users.groups.frame = { };
 
@@ -279,16 +276,7 @@ in
               ''
             else
               ''
-                # If a critical boot service failed, show its journal instead of
-                # starting the kiosk UI so the user can diagnose the problem.
-                for _svc in kiosk-firstboot.service kiosk-firstboot-init.service; do
-                  if systemctl is-failed --quiet "$_svc" 2>/dev/null; then
-                    exec foot sh -c \
-                      'echo "=== Boot error: '"$_svc"' failed ==="; echo; journalctl -b --no-pager; echo; printf "Press Enter to exit.\n"; read -r _'
-                  fi
-                done
-
-                # State file written by kiosk-firstboot overrides the compile-time default.
+                # Apply rotation first so foot (boot-error display) also uses the correct orientation.
                 _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation or "none"}")
                 if [ "$_ROTATION" = "right" ]; then
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
@@ -297,6 +285,15 @@ in
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
                   wlr-randr --output "$_OUTPUT" --transform 270 || true
                 fi
+
+                # If a critical boot service failed, show its journal instead of
+                # starting the kiosk UI so the user can diagnose the problem.
+                for _svc in kiosk-firstboot.service kiosk-firstboot-init.service; do
+                  if systemctl is-failed --quiet "$_svc" 2>/dev/null; then
+                    exec foot sh -c \
+                      'echo "=== Boot error: '"$_svc"' failed ==="; echo; journalctl -b --no-pager; echo; printf "Press Enter to exit.\n"; read -r _'
+                  fi
+                done
                 ${lib.optionalString cfg.onScreenKeyboard "wvkbd-mobintl &"}
                 chromium \
                   ${lib.optionalString cfg.chromiumKioskEnable "--kiosk "}\
@@ -426,10 +423,11 @@ in
         ];
 
         # Apple captive-portal probe (iOS / macOS).
+        # Returning a redirect (not Success) triggers the CNA popup automatically.
+        # We redirect to the IP directly to avoid mDNS (.local) delays on iOS.
         locations."/hotspot-detect.html" = {
           extraConfig = ''
-            default_type text/html;
-            return 200 '<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>';
+            return 302 http://${cfg.kioskIP}/manage;
           '';
         };
 
