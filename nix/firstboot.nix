@@ -59,7 +59,7 @@ let
       # Start connecting asynchronously so the daemon, which is already running
       # in setup mode at this point, detects the "activating" connection and
       # transitions from setup to normal mode.
-      ${pkgs.networkmanager}/bin/nmcli connection up kiosk --wait 0 || true
+      ${pkgs.networkmanager}/bin/nmcli --wait 0 connection up kiosk || true
     fi
 
     if [ -n "$hostname" ]; then
