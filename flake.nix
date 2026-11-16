@@ -82,6 +82,7 @@
                 app-chromium = mkCheck ./app/tests/chromium.nix;
                 app-daemon = mkCheck ./app/tests/daemon.nix;
                 app-firstboot = mkCheck ./app/tests/firstboot.nix;
+                app-ssh = mkCheck ./app/tests/ssh.nix;
               }
             );
           };
