@@ -278,10 +278,10 @@ in
               ''
                 # Apply rotation first so foot (boot-error display) also uses the correct orientation.
                 _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation or "none"}")
-                if [ "$_ROTATION" = "right" ]; then
+                if [ "$_ROTATION" = "CW" ]; then
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
                   wlr-randr --output "$_OUTPUT" --transform 90 || true
-                elif [ "$_ROTATION" = "left" ]; then
+                elif [ "$_ROTATION" = "CCW" ]; then
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
                   wlr-randr --output "$_OUTPUT" --transform 270 || true
                 fi

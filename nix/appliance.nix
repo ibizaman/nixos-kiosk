@@ -27,13 +27,13 @@ in
     screenRotation = lib.mkOption {
       type = lib.types.enum [
         "none"
-        "left"
-        "right"
+        "CW"
+        "CCW"
       ];
       default = "none";
       description = ''
         Screen rotation for the kiosk display.
-        "left" rotates 90° counter-clockwise, "right" rotates 90° clockwise.
+        "CW" rotates 90° clockwise, "CCW" rotates 90° counter-clockwise.
         Sets fbcon=rotate:N for the kernel console and rotates the Wayland
         output via wlr-randr.
         Note: GRUB is not rotated; on a kiosk with a short boot timeout this
@@ -65,7 +65,7 @@ in
     }
     (lib.mkIf (cfg.screenRotation != "none") {
       boot.kernelParams = [
-        "fbcon=rotate:${if cfg.screenRotation == "right" then "3" else "1"}"
+        "fbcon=rotate:${if cfg.screenRotation == "CW" then "3" else "1"}"
       ];
     })
   ]);

@@ -62,11 +62,11 @@
 
             packages = lib.optionalAttrs (system == "aarch64-linux") {
               sdimage = self.nixosConfigurations.default.config.system.build.sdImage;
-              sdimage-rotate-right = (self.nixosConfigurations.default.extendModules {
-                modules = [ { kiosk.screenRotation = "right"; } ];
+              sdimage-rotate-CW = (self.nixosConfigurations.default.extendModules {
+                modules = [ { kiosk.screenRotation = "CW"; } ];
               }).config.system.build.sdImage;
-              sdimage-rotate-left = (self.nixosConfigurations.default.extendModules {
-                modules = [ { kiosk.screenRotation = "left"; } ];
+              sdimage-rotate-CCW = (self.nixosConfigurations.default.extendModules {
+                modules = [ { kiosk.screenRotation = "CCW"; } ];
               }).config.system.build.sdImage;
             };
           };
