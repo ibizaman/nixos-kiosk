@@ -67,6 +67,14 @@ in
       boot.kernelParams = [
         "fbcon=rotate:${if cfg.screenRotation == "CW" then "3" else "1"}"
       ];
+      # Remap touch coordinates to match the rotated display.
+      # CW  (90° clockwise):         (x,y) → (y, 1-x) → matrix "0 1 0 -1 0 1"
+      # CCW (90° counter-clockwise): (x,y) → (1-y, x) → matrix "0 -1 1 1 0 0"
+      services.udev.extraRules = ''
+        ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{LIBINPUT_CALIBRATION_MATRIX}="${
+          if cfg.screenRotation == "CW" then "0 1 0 -1 0 1" else "0 -1 1 1 0 0"
+        }"
+      '';
     })
   ]);
 }
