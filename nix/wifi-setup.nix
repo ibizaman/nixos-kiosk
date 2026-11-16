@@ -269,6 +269,7 @@ in
               [
                 pkgs.chromium
                 pkgs.wlr-randr
+                pkgs.foot
               ]
               ++ lib.optional cfg.onScreenKeyboard pkgs.wvkbd;
           text =
@@ -278,6 +279,15 @@ in
               ''
             else
               ''
+                # If a critical boot service failed, show its journal instead of
+                # starting the kiosk UI so the user can diagnose the problem.
+                for _svc in kiosk-firstboot.service kiosk-firstboot-init.service; do
+                  if systemctl is-failed --quiet "$_svc" 2>/dev/null; then
+                    exec foot sh -c \
+                      'echo "=== Boot error: '"$_svc"' failed ==="; echo; journalctl -b --no-pager; echo; printf "Press Enter to exit.\n"; read -r _'
+                  fi
+                done
+
                 # State file written by kiosk-firstboot overrides the compile-time default.
                 _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation or "none"}")
                 if [ "$_ROTATION" = "right" ]; then
@@ -302,6 +312,13 @@ in
               '';
         }
       );
+    };
+
+    # cage-tty1 must start after kiosk-firstboot so the script above can
+    # reliably inspect its final state via systemctl is-failed.
+    systemd.services."cage-tty1" = {
+      after = [ "kiosk-firstboot.service" ];
+      wants = [ "kiosk-firstboot.service" ];
     };
 
     boot.extraModprobeConfig = lib.mkIf (cfg.countryCode != null) ''
