@@ -151,6 +151,26 @@ pkgs.testers.runNixOSTest {
           if code != "302":
               raise Exception(f"Expected 302 from HTTPS catch-all, got {code!r}")
 
+      with subtest("Windows NCSI probes return correct plain-text responses"):
+          body = kiosk.succeed("curl -s http://127.0.0.1/ncsi.txt").strip()
+          if body != "Microsoft NCSI":
+              raise Exception(f"/ncsi.txt body wrong: {body!r}")
+          body2 = kiosk.succeed("curl -s http://127.0.0.1/connecttest.txt").strip()
+          if body2 != "Microsoft Connect Test":
+              raise Exception(f"/connecttest.txt body wrong: {body2!r}")
+
+      with subtest("Firefox captive-portal probe returns 200 success"):
+          body = kiosk.succeed("curl -s http://127.0.0.1/success.txt").strip()
+          if body != "success":
+              raise Exception(f"/success.txt body wrong: {body!r}")
+
+      with subtest("manage page renders strength-bar spans"):
+          body = kiosk.succeed(
+              "curl -s http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
+          )
+          if 'class="strength-bar' not in body:
+              raise Exception("manage page must contain strength-bar spans")
+
       with subtest("initial state: kiosk displays manage page"):
           url = get_current_url()
           expected = "http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
