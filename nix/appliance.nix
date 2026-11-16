@@ -68,10 +68,11 @@ in
       # kiosk-firstboot may write nixosPassword into settings.json; running
       # after it ensures the latest value is picked up on first boot too.
       systemd.services.kiosk-apply-nixos-password = {
-        description = "Apply nixos SSH password from kiosk settings";
+        description = "Apply nixos login password from kiosk settings";
 
         wantedBy = [ "multi-user.target" ];
         after = [
+          "nixos-activation.service"
           "kiosk-firstboot.service"
           "systemd-tmpfiles-setup.service"
         ];

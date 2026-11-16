@@ -86,11 +86,6 @@ let
       chmod 644 /var/lib/nixos-kiosk/nixos-authorized-keys
     fi
 
-    if [ -n "$nixos_password" ]; then
-      echo "Setting nixos user password"
-      printf 'nixos:%s\n' "$nixos_password" | ${pkgs.shadow}/bin/chpasswd
-    fi
-
     SETTINGS=/var/lib/nixos-kiosk/settings.json
     existing='{}'
     if [ -f "$SETTINGS" ]; then
