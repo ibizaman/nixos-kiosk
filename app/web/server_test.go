@@ -199,3 +199,44 @@ func TestValidHostname(t *testing.T) {
 		}
 	}
 }
+
+func renderStrengthBars(t *testing.T, strength uint8) string {
+	t.Helper()
+	var buf strings.Builder
+	if err := htmlTemplates.ExecuteTemplate(&buf, "strength-bars", strength); err != nil {
+		t.Fatalf("ExecuteTemplate strength-bars(%d): %v", strength, err)
+	}
+	return buf.String()
+}
+
+func TestStrengthBarsTemplate(t *testing.T) {
+	cases := []struct {
+		strength    uint8
+		wantActive  int
+	}{
+		{0, 0},
+		{1, 1},
+		{24, 1},
+		{25, 2},
+		{49, 2},
+		{50, 3},
+		{74, 3},
+		{75, 4},
+		{100, 4},
+	}
+	for _, c := range cases {
+		out := renderStrengthBars(t, c.strength)
+		if out == "" {
+			t.Errorf("strength=%d: template rendered nothing", c.strength)
+		}
+		got := strings.Count(out, `class="strength-bar active"`)
+		if got != c.wantActive {
+			t.Errorf("strength=%d: got %d active bars, want %d\noutput: %s",
+				c.strength, got, c.wantActive, out)
+		}
+		total := strings.Count(out, "strength-bar")
+		if total < 4 {
+			t.Errorf("strength=%d: got %d strength-bar mentions, want at least 4", c.strength, total)
+		}
+	}
+}

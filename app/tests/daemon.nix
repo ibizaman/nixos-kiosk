@@ -164,12 +164,12 @@ pkgs.testers.runNixOSTest {
           if body != "success":
               raise Exception(f"/success.txt body wrong: {body!r}")
 
-      with subtest("manage page renders strength-bar spans"):
+      with subtest("manage page includes strength-bar CSS"):
           body = kiosk.succeed(
               "curl -s http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
           )
-          if 'class="strength-bar' not in body:
-              raise Exception("manage page must contain strength-bar spans")
+          if ".strength-bar" not in body:
+              raise Exception("manage page must include .strength-bar CSS")
 
       with subtest("initial state: kiosk displays manage page"):
           url = get_current_url()
