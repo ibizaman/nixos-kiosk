@@ -20,9 +20,8 @@
       "nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0="
       "nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI="
     ];
-    # Lets the remote builder (e.g. nixbuild.net) fetch its own intermediate
-    # inputs from its cache, avoiding unnecessary large downloads to the local
-    # machine between dependent derivations.
+    # Lets the remote builder fetch intermediate inputs from its own substituters
+    # instead of requiring the local machine to re-upload them between builds.
     builders-use-substitutes = true;
   };
 
