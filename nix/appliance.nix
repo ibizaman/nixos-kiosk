@@ -60,6 +60,8 @@ in
       systemd.tmpfiles.rules = [
         # Empty authorized_keys file for the nixos user; firstboot may append a key.
         "f /var/lib/nixos-kiosk/nixos-authorized-keys 0644 root root -"
+        # Hostname state file writable by kiosk-controller so the UI can persist it.
+        "f /var/lib/nixos-kiosk/hostname 0640 kiosk-controller kiosk-controller -"
       ];
 
       users.users.nixos.openssh.authorizedKeys.keys = cfg.sshAuthorizedKeys;

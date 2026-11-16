@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 
@@ -50,10 +51,19 @@ type ServerConfig struct {
 	HotspotSSID      string
 	HotspotPSK       string
 	SettingsPath     string
+	HostnameStatePath string
 	DefaultSettings  Settings
 	// DefaultNormalURL is the compiled-in fallback shown on /manage when
 	// settings.json does not contain a normalUrl.
 	DefaultNormalURL string
+}
+
+// hostnameRE accepts RFC 1123 single-label hostnames: letters, digits, hyphens;
+// must not start or end with a hyphen; max 63 characters.
+var hostnameRE = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
+
+func validHostname(h string) bool {
+	return hostnameRE.MatchString(h)
 }
 
 type ManagePageData struct {
@@ -331,7 +341,16 @@ func settingsPost(cfg ServerConfig, mu *sync.Mutex) http.HandlerFunc {
 
 		s := loadSettings(cfg.SettingsPath, cfg.DefaultSettings)
 		if v := r.FormValue("hostname"); v != "" {
+			if !validHostname(v) {
+				writeJSON(w, http.StatusBadRequest, settingsResponse{Status: "error", Error: "invalid hostname: use only letters, digits, and hyphens"})
+				return
+			}
 			s.MDNSHostname = v
+			if cfg.HostnameStatePath != "" {
+				if err := os.WriteFile(cfg.HostnameStatePath, []byte(v), 0o640); err != nil {
+					log.Printf("settingsPost: write hostname state: %s", err)
+				}
+			}
 		}
 		if v := r.FormValue("normalUrl"); v != "" {
 			s.NormalURL = v

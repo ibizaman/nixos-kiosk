@@ -137,6 +137,10 @@ func main() {
 						Usage: "mDNS hostname for the kiosk (without .local)",
 						Value: "nixos-kiosk",
 					},
+					&cli.StringFlag{
+						Name:  "hostname-state-path",
+						Usage: "path to persist hostname set via UI across reboots",
+					},
 				},
 				Action: serve,
 			},
@@ -247,6 +251,10 @@ func main() {
 					&cli.StringFlag{
 						Name:  "url-prefix",
 						Usage: "if set, only redirect when the current URL does not start with this prefix",
+					},
+					&cli.StringFlag{
+						Name:  "hostname-state-path",
+						Usage: "path to persist hostname set via UI across reboots",
 					},
 				},
 				Action: startDaemon,
@@ -420,10 +428,11 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	defer cancel()
 
 	_, errChan := web.Start(ctx, n, web.ServerConfig{
-		Addr:         addr,
-		HotspotSSID:  ssid,
-		HotspotPSK:   password,
-		SettingsPath: cmd.String("settings-path"),
+		Addr:              addr,
+		HotspotSSID:       ssid,
+		HotspotPSK:        password,
+		SettingsPath:      cmd.String("settings-path"),
+		HostnameStatePath: cmd.String("hostname-state-path"),
 		DefaultSettings: web.Settings{
 			MDNSHostname: cmd.String("hostname"),
 		},
@@ -525,11 +534,12 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	listenAddr := fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port"))
 	liveData, errChan := web.Start(ctx, n, web.ServerConfig{
-		Addr:             listenAddr,
-		HotspotSSID:      ssid,
-		HotspotPSK:       password,
-		SettingsPath:     cmd.String("settings-path"),
-		DefaultNormalURL: cmd.StringArg("URL"),
+		Addr:              listenAddr,
+		HotspotSSID:       ssid,
+		HotspotPSK:        password,
+		SettingsPath:      cmd.String("settings-path"),
+		HostnameStatePath: cmd.String("hostname-state-path"),
+		DefaultNormalURL:  cmd.StringArg("URL"),
 		DefaultSettings: web.Settings{
 			MDNSHostname:  cmd.String("hostname"),
 			URLPrefix:     cmd.String("url-prefix"),

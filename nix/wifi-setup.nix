@@ -190,7 +190,7 @@ in
 
       serviceConfig = {
         Type = "notify";
-        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json --connectivity-check-host ${cfg.connectivityCheckHost} --ntp-server ${cfg.ntpServer}"
+        ExecStart = "${cfg.package}/bin/nixos-kiosk daemon '${cfg.setupSSID}' ${cfg.normalURL} --port ${toString cfg.setupPort} --chromium-port ${toString cfg.chromiumPort} --ip ${cfg.kioskIP} --hostname ${cfg.hostname} --settings-path /var/lib/nixos-kiosk/settings.json --hostname-state-path /var/lib/nixos-kiosk/hostname --connectivity-check-host ${cfg.connectivityCheckHost} --ntp-server ${cfg.ntpServer}"
             + lib.optionalString (cfg.urlPrefix != "") " --url-prefix '${cfg.urlPrefix}'";
         User = "kiosk-controller";
         Restart = "always";

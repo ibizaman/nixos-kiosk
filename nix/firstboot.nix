@@ -143,6 +143,7 @@ let
 
     echo "Restoring hostname: $hostname"
     printf '%s' "$hostname" > /proc/sys/kernel/hostname
+    ${pkgs.systemd}/bin/systemctl try-restart avahi-daemon.service || true
   '';
 in
 {
@@ -209,9 +210,11 @@ in
           "systemd-tmpfiles-setup.service"
         ];
         # avahi and NetworkManager should see the correct hostname from the start.
+        # kiosk-firstboot.service listed explicitly so the ordering is unambiguous.
         before = [
           "avahi-daemon.service"
           "NetworkManager.service"
+          "kiosk-firstboot.service"
         ];
 
         serviceConfig = {
