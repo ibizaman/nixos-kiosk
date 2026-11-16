@@ -29,7 +29,7 @@ let
     echo "Applying firstboot configuration from $CONFIG"
 
     parse_value() {
-      grep "^$1=" "$CONFIG" 2>/dev/null | head -1 | cut -d= -f2- || true
+      grep "^$1=" "$CONFIG" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r' || true
     }
 
     wifi_ssid=$(parse_value wifi_ssid)
@@ -108,6 +108,11 @@ let
     chown kiosk-controller:kiosk-controller "$SETTINGS" 2>/dev/null || true
     chmod 640 "$SETTINGS"
 
+    # Strip credentials before archiving so .applied does not retain plaintext secrets.
+    ${pkgs.gnused}/bin/sed -i \
+      -e 's/^\(wifi_password\)=.*/\1=/' \
+      -e 's/^\(nixos_password\)=.*/\1=/' \
+      "$CONFIG"
     echo "Done. Renaming $CONFIG to $CONFIG.applied"
     mv "$CONFIG" "$CONFIG.applied"
   '';

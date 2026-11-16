@@ -204,6 +204,9 @@ in
         PASSWORD=$(${pkgs.jq}/bin/jq -r '.nixosPassword // empty' "$SETTINGS")
         if [ -z "$PASSWORD" ]; then exit 0; fi
         printf 'nixos:%s\n' "$PASSWORD" | ${pkgs.shadow}/bin/chpasswd
+        # Clear the password from settings.json now that it has been applied.
+        ${pkgs.jq}/bin/jq 'del(.nixosPassword)' "$SETTINGS" > "$SETTINGS.tmp" \
+          && mv "$SETTINGS.tmp" "$SETTINGS"
       '';
     };
 
