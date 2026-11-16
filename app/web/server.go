@@ -387,7 +387,7 @@ func saveSettings(path string, s Settings) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o640)
 }
 
 func writeJSON(w http.ResponseWriter, status int, resp any) {
