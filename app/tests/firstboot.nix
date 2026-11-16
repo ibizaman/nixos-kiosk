@@ -62,6 +62,52 @@ EOF
         '';
       };
 
+    # Node with an open (passwordless) WiFi network.
+    open_network =
+      { ... }:
+      {
+        imports = [
+          ../../nix/wifi-setup.nix
+          ../../nix/firstboot.nix
+        ];
+
+        kiosk.enable = true;
+        kiosk.firstboot.enable = true;
+
+        boot.kernelModules = [ "mac80211_hwsim" ];
+
+        boot.postBootCommands = ''
+          mkdir -p /boot/firmware
+          cat > /boot/firmware/kiosk.conf << 'EOF'
+wifi_ssid=OpenNet
+wifi_password=
+hostname=open-kiosk
+EOF
+        '';
+      };
+
+    # Node with only a subset of fields — exercises that absent fields are no-ops.
+    partial_conf =
+      { ... }:
+      {
+        imports = [
+          ../../nix/wifi-setup.nix
+          ../../nix/firstboot.nix
+        ];
+
+        kiosk.enable = true;
+        kiosk.firstboot.enable = true;
+
+        boot.kernelModules = [ "mac80211_hwsim" ];
+
+        boot.postBootCommands = ''
+          mkdir -p /boot/firmware
+          cat > /boot/firmware/kiosk.conf << 'EOF'
+hostname=partial-kiosk
+EOF
+        '';
+      };
+
     # Node with only kiosk.conf.applied — init service skips; apply service skips.
     already_applied =
       { ... }:
@@ -87,10 +133,14 @@ EOF
     with_config.start()
     no_config.start()
     already_applied.start()
+    open_network.start()
+    partial_conf.start()
 
     with_config.wait_for_unit("multi-user.target")
     no_config.wait_for_unit("multi-user.target")
     already_applied.wait_for_unit("multi-user.target")
+    open_network.wait_for_unit("multi-user.target")
+    partial_conf.wait_for_unit("multi-user.target")
 
     with subtest("with_config: kiosk-firstboot.service completes"):
         with_config.wait_for_unit("kiosk-firstboot.service")
@@ -180,5 +230,45 @@ EOF
 
     with subtest("already_applied: apply service skips gracefully"):
         already_applied.wait_for_unit("kiosk-firstboot.service")
+
+    with subtest("open_network: firstboot succeeds with no wifi_password"):
+        open_network.wait_for_unit("kiosk-firstboot.service")
+        open_network.succeed("test -f /boot/firmware/kiosk.conf.applied")
+        # NM profile must exist but have no security settings.
+        profile = open_network.succeed("nmcli -t -f connection.id,802-11-wireless.ssid connection show kiosk")
+        assert "OpenNet" in profile, f"open ssid not in NM profile: {profile}"
+        # The profile must NOT have a psk set (open network).
+        sec = open_network.succeed(
+            "nmcli -s -t -f 802-11-wireless-security.key-mgmt connection show kiosk 2>&1 || true"
+        )
+        assert "wpa-psk" not in sec, f"open network should not have wpa-psk: {sec}"
+
+    with subtest("open_network: hostname set correctly"):
+        open_network.wait_for_unit("kiosk-firstboot.service")
+        hostname = open_network.succeed("hostname").strip()
+        assert hostname == "open-kiosk", f"hostname wrong: {hostname!r}"
+
+    with subtest("partial_conf: firstboot completes with only hostname set"):
+        partial_conf.wait_for_unit("kiosk-firstboot.service")
+        partial_conf.succeed("test -f /boot/firmware/kiosk.conf.applied")
+        hostname = partial_conf.succeed("hostname").strip()
+        assert hostname == "partial-kiosk", f"hostname wrong: {hostname!r}"
+
+    with subtest("with_config: credentials stripped from kiosk.conf.applied"):
+        with_config.wait_for_unit("kiosk-firstboot.service")
+        applied = with_config.succeed("cat /boot/firmware/kiosk.conf.applied")
+        assert "s3cr3tpw" not in applied, "wifi_password must be stripped from .applied"
+        assert "testpw123" not in applied, "nixos_password must be stripped from .applied"
+        # Field keys should still be present (just empty values).
+        assert "wifi_password=" in applied, "wifi_password key missing from .applied"
+        assert "nixos_password=" in applied, "nixos_password key missing from .applied"
+
+    with subtest("with_config: nixosPassword cleared from settings.json after apply"):
+        with_config.wait_for_unit("kiosk-apply-nixos-password.service")
+        s = with_config.succeed("cat /var/lib/nixos-kiosk/settings.json")
+        import json
+        settings_after = json.loads(s)
+        assert "nixosPassword" not in settings_after, \
+            f"nixosPassword must be cleared after chpasswd: {settings_after}"
   '';
 }
