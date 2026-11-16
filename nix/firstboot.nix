@@ -29,7 +29,7 @@ let
     echo "Applying firstboot configuration from $CONFIG"
 
     parse_value() {
-      grep "^$1=" "$CONFIG" 2>/dev/null | head -1 | cut -d= -f2-
+      grep "^$1=" "$CONFIG" 2>/dev/null | head -1 | cut -d= -f2- || true
     }
 
     wifi_ssid=$(parse_value wifi_ssid)
