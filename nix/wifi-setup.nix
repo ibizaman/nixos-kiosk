@@ -401,6 +401,16 @@ in
     services.nginx = {
       enable = true;
 
+      # HTTP catch-all: handles every domain dnsmasq points at the kiosk IP.
+      #
+      # Captive-portal probe paths (/hotspot-detect.html, /generate_204) return
+      # the OS-specific "connected" response so the device stays associated with
+      # the AP.  Returning a redirect here instead would cause iOS to disconnect
+      # after ~3 s once it decides the portal never completed.
+      #
+      # All other requests are proxied directly to the kiosk setup backend
+      # instead of redirecting to hostname.local — the .local redirect required
+      # mDNS resolution which could add up to 20 s on iOS before the page appeared.
       virtualHosts."_" = {
         listen = [
           {
@@ -415,16 +425,34 @@ in
           }
         ];
 
-        locations."/" = {
+        # Apple captive-portal probe (iOS / macOS).
+        locations."/hotspot-detect.html" = {
           extraConfig = ''
-            return 302 http://${cfg.hostname}.local;
+            default_type text/html;
+            return 200 '<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>';
+          '';
+        };
+
+        # Android captive-portal probe.
+        locations."/generate_204" = {
+          extraConfig = "return 204;";
+        };
+
+        locations."/" = {
+          proxyPass = "http://127.0.0.1:${toString cfg.setupPort}";
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
           '';
         };
       };
 
-      # Catch-all HTTPS vhost: returns 302 to the HTTP setup page so that
-      # iOS's HTTPS captive-portal probes get a TLS cert error (= "portal
-      # present") rather than connection refused (= "network broken").
+      # Catch-all HTTPS vhost: iOS 14+ probes https://captive.apple.com/… to
+      # detect captive portals.  Without anything on port 443 iOS gets
+      # "connection refused" which it treats as "broken network" and disconnects
+      # immediately.  With a self-signed cert it gets a TLS error, which iOS
+      # correctly reads as "intercepting captive portal" and keeps the AP
+      # association alive.
       virtualHosts."_https" = {
         listen = [
           {
@@ -441,7 +469,7 @@ in
 
         locations."/" = {
           extraConfig = ''
-            return 302 http://${cfg.hostname}.local;
+            return 302 http://${cfg.kioskIP}/manage;
           '';
         };
       };
