@@ -60,40 +60,9 @@ in
       systemd.tmpfiles.rules = [
         # Empty authorized_keys file for the nixos user; firstboot may append a key.
         "f /var/lib/nixos-kiosk/nixos-authorized-keys 0644 root root -"
-        # Hostname state file writable by kiosk-controller so the UI can persist it.
-        "f /var/lib/nixos-kiosk/hostname 0640 kiosk-controller kiosk-controller -"
       ];
 
       users.users.nixos.openssh.authorizedKeys.keys = cfg.sshAuthorizedKeys;
-
-      # Apply nixos user password from settings.json on every boot.
-      # kiosk-firstboot may write nixosPassword into settings.json; running
-      # after it ensures the latest value is picked up on first boot too.
-      systemd.services.kiosk-apply-nixos-password = {
-        description = "Apply nixos login password from kiosk settings";
-
-        wantedBy = [ "multi-user.target" ];
-        after = [
-          "nixos-activation.service"
-          "kiosk-firstboot.service"
-          "systemd-tmpfiles-setup.service"
-        ];
-        wants = [ "kiosk-firstboot.service" ];
-
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-        };
-
-        script = ''
-          set -euo pipefail
-          SETTINGS=/var/lib/nixos-kiosk/settings.json
-          if [ ! -f "$SETTINGS" ]; then exit 0; fi
-          PASSWORD=$(${pkgs.jq}/bin/jq -r '.nixosPassword // empty' "$SETTINGS")
-          if [ -z "$PASSWORD" ]; then exit 0; fi
-          printf 'nixos:%s\n' "$PASSWORD" | ${pkgs.shadow}/bin/chpasswd
-        '';
-      };
     }
     (lib.mkIf (cfg.screenRotation != "none") {
       boot.kernelParams = [
