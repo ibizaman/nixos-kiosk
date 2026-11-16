@@ -290,10 +290,10 @@ button:disabled:active { transform: none; }
     <small style="color:var(--muted);font-size:0.8rem;">Navigator only redirects when the current URL does not start with this prefix.</small>
   </div>
   <div>
-    <label for="nixosPassword">SSH Password (nixos user)</label>
-    <input id="nixosPassword" name="nixosPassword" value="{{ .Settings.NixosPassword }}"
-           placeholder="nixos">
-    <small style="color:var(--muted);font-size:0.8rem;">Applied on next reboot.</small>
+    <label for="nixosPassword">Login password (nixos user)</label>
+    <input id="nixosPassword" name="nixosPassword" type="password"
+           autocomplete="new-password" placeholder="leave blank to keep current">
+    <small style="color:var(--muted);font-size:0.8rem;">Console/SSH login password. Applied on next reboot. SSH password auth is disabled by default.</small>
   </div>
   <button type="submit">Save Settings</button>
   <div id="settings-status" class="status-msg hidden"></div>

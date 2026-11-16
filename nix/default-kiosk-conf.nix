@@ -32,7 +32,7 @@ pkgs.writeText "kiosk.conf" ''
   # Paste a full public key (e.g. the contents of ~/.ssh/id_ed25519.pub)
   ssh_authorized_key=
 
-  # SSH password for the nixos user (default: nixos)
-  # Change this to a secure password before deploying.
+  # Login password for the nixos user (console and, if enabled, SSH).
+  # Leave empty to keep the compiled-in default ("nixos") — insecure, change before deploying.
   nixos_password=
 ''
