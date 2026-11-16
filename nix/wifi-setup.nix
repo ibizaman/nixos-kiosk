@@ -164,10 +164,11 @@ in
     # Enables touchscreen
     services.libinput.enable = true;
 
-    # Prevent the touchscreen from emitting pointer events (which would show a
-    # cursor). Touch events via wl_touch are unaffected.
+    # Prevent touchscreen and tablet devices from emitting pointer events (which
+    # would show a cursor). Touch events via wl_touch are unaffected.
     services.udev.extraRules = ''
       ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{ID_INPUT_MOUSE}="0", ENV{ID_INPUT_POINTER}="0"
+      ENV{ID_INPUT_TABLET}=="1", ENV{ID_INPUT_MOUSE}="0", ENV{ID_INPUT_POINTER}="0"
     '';
 
     systemd.tmpfiles.rules = [
@@ -306,7 +307,6 @@ in
                   ${lib.optionalString cfg.persistBrowserSession "--user-data-dir=/var/lib/nixos-kiosk/chromium "}\
                   --ozone-platform=wayland \
                   --no-first-run \
-                  --hide-cursor \
                   --disable-infobars \
                   --noerrdialogs \
                   --remote-debugging-address=127.0.0.1 \
@@ -322,13 +322,6 @@ in
     systemd.services."cage-tty1" = {
       after = [ "kiosk-firstboot.service" ];
       wants = [ "kiosk-firstboot.service" ];
-      environment = {
-        # Force software cursor path so wlroots respects the xcursor theme.
-        WLR_NO_HARDWARE_CURSORS = "1";
-        # Non-existent theme → xcursor load fails → cursor image stays NULL
-        # → wlroots never renders the cursor sprite.
-        XCURSOR_THEME = "none";
-      };
     };
 
     boot.extraModprobeConfig = lib.mkIf (cfg.countryCode != null) ''

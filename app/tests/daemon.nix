@@ -95,6 +95,15 @@ pkgs.testers.runNixOSTest {
       kiosk.wait_for_unit("wpa_supplicant.service")
       kiosk.wait_for_unit("nixos-kiosk.service")
 
+      with subtest("manage page CSS suppresses cursor for touch-only use"):
+          body = kiosk.succeed(
+              "curl -s http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
+          )
+          if "cursor: none" not in body:
+              raise Exception("manage.html must include 'cursor: none' to hide cursor on touch devices")
+          if "cursor: pointer" in body or "cursor: not-allowed" in body:
+              raise Exception("manage.html must not set cursor shapes that would show a hand cursor")
+
       with subtest("self-signed TLS cert is generated before nginx starts"):
           kiosk.wait_for_unit("kiosk-gen-tls-cert.service")
           kiosk.succeed("test -f /var/lib/nixos-kiosk/captive-portal.crt")
