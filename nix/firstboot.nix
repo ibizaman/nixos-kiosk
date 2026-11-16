@@ -70,7 +70,10 @@ let
       chown kiosk-controller:kiosk-controller ${hostnameStateFile} 2>/dev/null || true
       # Apply immediately on first boot (kiosk-apply-hostname already ran before
       # this service, so the state file wasn't available to it yet).
-      ${pkgs.systemd}/bin/hostnamectl set-hostname "$hostname"
+      # Write directly to the kernel UTS hostname: hostnamectl writes to
+      # /etc/hostname (read-only Nix store symlink) and --transient is a no-op
+      # when a static hostname is already set.
+      printf '%s' "$hostname" > /proc/sys/kernel/hostname
       # Restart avahi so it picks up the new hostname right away.
       ${pkgs.systemd}/bin/systemctl try-restart avahi-daemon.service || true
     fi
@@ -133,7 +136,7 @@ let
     fi
 
     echo "Restoring hostname: $hostname"
-    ${pkgs.systemd}/bin/hostnamectl set-hostname "$hostname"
+    printf '%s' "$hostname" > /proc/sys/kernel/hostname
   '';
 in
 {
