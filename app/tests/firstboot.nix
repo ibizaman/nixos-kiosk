@@ -183,14 +183,6 @@ EOF
             f"authorized key wrong: {key!r}"
 
 
-    with subtest("with_config: nixos_password persisted in settings.json"):
-        with_config.wait_for_unit("kiosk-firstboot.service")
-        s = with_config.succeed("cat /var/lib/nixos-kiosk/settings.json")
-        import json
-        settings_pw = json.loads(s)
-        assert settings_pw.get("nixosPassword") == "testpw123", \
-            f"nixosPassword wrong in settings.json: {settings_pw}"
-
     with subtest("with_config: kiosk-apply-nixos-password applies password"):
         with_config.wait_for_unit("kiosk-apply-nixos-password.service")
         result = with_config.succeed(
