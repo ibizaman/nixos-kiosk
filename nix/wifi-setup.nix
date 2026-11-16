@@ -322,6 +322,13 @@ in
     systemd.services."cage-tty1" = {
       after = [ "kiosk-firstboot.service" ];
       wants = [ "kiosk-firstboot.service" ];
+      environment = {
+        # Force software cursor path so wlroots respects the xcursor theme.
+        WLR_NO_HARDWARE_CURSORS = "1";
+        # Non-existent theme → xcursor load fails → cursor image stays NULL
+        # → wlroots never renders the cursor sprite.
+        XCURSOR_THEME = "none";
+      };
     };
 
     boot.extraModprobeConfig = lib.mkIf (cfg.countryCode != null) ''
