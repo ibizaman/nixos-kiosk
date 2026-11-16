@@ -13,6 +13,10 @@
     extra-trusted-public-keys = [
       "nixos-kiosk.cachix.org-1:Ra804yD9XwVuzkKY3SnXbPz36sH5hHr27fz1qSBdmZ0="
     ];
+    # Lets the remote builder (e.g. nixbuild.net) fetch its own intermediate
+    # inputs from its cache, avoiding unnecessary large downloads to the local
+    # machine between dependent derivations.
+    builders-use-substitutes = true;
   };
 
   outputs =
