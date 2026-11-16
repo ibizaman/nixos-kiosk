@@ -260,6 +260,72 @@ func TestManagePageNeverRedirected(t *testing.T) {
 	}
 }
 
+func TestURLPrefixEmptyFallsBackToExactMatch(t *testing.T) {
+	// No prefix set and browser is on a different external URL — must navigate.
+	mock := &mockClient{currentURL: "http://other.site/page"}
+	ch := make(chan string, 1)
+	ch <- "https://kiosk.example.com/view"
+
+	cfg := Config{
+		NewClient:    func() Client { return mock },
+		PollInterval: 10 * time.Millisecond,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	Run(ctx, cfg, ch)
+
+	calls := mock.getNavigateCalls()
+	if len(calls) == 0 {
+		t.Fatal("Navigate never called (URL differs from target, no prefix set)")
+	}
+	if calls[0] != "https://kiosk.example.com/view" {
+		t.Errorf("Navigate called with %q, want %q", calls[0], "https://kiosk.example.com/view")
+	}
+}
+
+func TestURLPrefixManagePageExceptionWinsOverPrefix(t *testing.T) {
+	// User is on /manage — must not be redirected even when prefix is set and
+	// /manage is not under the prefix.
+	mock := &mockClient{currentURL: "http://localhost:8000/manage"}
+	ch := make(chan string, 1)
+	ch <- "http://dashboard.local/lovelace"
+
+	cfg := Config{
+		NewClient:    func() Client { return mock },
+		PollInterval: 10 * time.Millisecond,
+		URLPrefix:    "http://dashboard.local",
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	Run(ctx, cfg, ch)
+
+	if calls := mock.getNavigateCalls(); len(calls) != 0 {
+		t.Errorf("Navigate called %d times, want 0 (on /manage, exception must win over prefix)", len(calls))
+	}
+}
+
+func TestGetURLPrefixOverridesStaticField(t *testing.T) {
+	// GetURLPrefix takes precedence over the static URLPrefix field.
+	// Browser is on a page under the dynamic prefix — must not redirect.
+	mock := &mockClient{currentURL: "http://dynamic.local/page"}
+	ch := make(chan string, 1)
+	ch <- "http://localhost:8000/manage"
+
+	cfg := Config{
+		NewClient:    func() Client { return mock },
+		PollInterval: 10 * time.Millisecond,
+		URLPrefix:    "http://static.local", // would cause a redirect
+		GetURLPrefix: func() string { return "http://dynamic.local" },
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	Run(ctx, cfg, ch)
+
+	if calls := mock.getNavigateCalls(); len(calls) != 0 {
+		t.Errorf("Navigate called %d times, want 0 (GetURLPrefix should override URLPrefix)", len(calls))
+	}
+}
+
 func TestNoNavigationWithoutURL(t *testing.T) {
 	mock := &mockClient{}
 	ch := make(chan string)

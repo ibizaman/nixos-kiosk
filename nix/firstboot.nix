@@ -36,6 +36,7 @@ let
     wifi_password=$(parse_value wifi_password)
     hostname=$(parse_value hostname)
     normal_url=$(parse_value normal_url)
+    url_prefix=$(parse_value url_prefix)
     update_url=$(parse_value update_url)
     ssh_authorized_key=$(parse_value ssh_authorized_key)
     nixos_password=$(parse_value nixos_password)
@@ -99,10 +100,12 @@ let
     new_settings=$(printf '%s' "$existing" | ${pkgs.jq}/bin/jq \
       --arg hn "$hostname" \
       --arg nu "$normal_url" \
+      --arg up "$url_prefix" \
       --arg uu "$update_url" \
       --arg np "$nixos_password" \
       '(if $hn != "" then .mdnsHostname = $hn else . end) |
        (if $nu != "" then .normalUrl = $nu else . end) |
+       (if $up != "" then .urlPrefix = $up else . end) |
        (if $uu != "" then .updateUrl = $uu else . end) |
        (if $np != "" then .nixosPassword = $np else . end)')
 

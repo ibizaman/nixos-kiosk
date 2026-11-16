@@ -21,6 +21,10 @@ pkgs.writeText "kiosk.conf" ''
   # Leave empty to use the compiled-in default
   normal_url=
 
+  # URL prefix: navigator only redirects when the current URL does not start
+  # with this value. Useful for multi-page dashboards. Leave empty to disable.
+  url_prefix=
+
   # URL for firmware updates (leave empty to disable)
   update_url=
 
