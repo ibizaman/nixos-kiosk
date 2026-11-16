@@ -65,7 +65,7 @@ in
     }
     (lib.mkIf (cfg.screenRotation != "none") {
       boot.kernelParams = [
-        "fbcon=rotate:${if cfg.screenRotation == "CW" then "3" else "1"}"
+        "fbcon=rotate:${if cfg.screenRotation == "CW" then "1" else "3"}"
       ];
       # Remap touch coordinates to match the rotated display.
       # CW  (90° clockwise):         (x,y) → (y, 1-x) → matrix "0 1 0 -1 0 1"

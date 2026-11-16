@@ -286,10 +286,10 @@ in
                 _ROTATION=$(cat /var/lib/nixos-kiosk/screen-rotation 2>/dev/null || echo "${cfg.screenRotation or "none"}")
                 if [ "$_ROTATION" = "CW" ]; then
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
-                  wlr-randr --output "$_OUTPUT" --transform 90 || true
+                  wlr-randr --output "$_OUTPUT" --transform 270 || true
                 elif [ "$_ROTATION" = "CCW" ]; then
                   _OUTPUT=$(wlr-randr | awk 'NR==1 {print $1; exit}')
-                  wlr-randr --output "$_OUTPUT" --transform 270 || true
+                  wlr-randr --output "$_OUTPUT" --transform 90 || true
                 fi
 
                 # If a critical boot service failed, show its journal instead of
