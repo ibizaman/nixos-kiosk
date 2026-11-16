@@ -44,11 +44,14 @@ func LoadSettings(path string, defaults Settings) Settings {
 }
 
 type ServerConfig struct {
-	Addr            string
-	HotspotSSID     string
-	HotspotPSK      string
-	SettingsPath    string
-	DefaultSettings Settings
+	Addr             string
+	HotspotSSID      string
+	HotspotPSK       string
+	SettingsPath     string
+	DefaultSettings  Settings
+	// DefaultNormalURL is the compiled-in fallback shown on /manage when
+	// settings.json does not contain a normalUrl.
+	DefaultNormalURL string
 }
 
 type ManagePageData struct {
@@ -58,6 +61,9 @@ type ManagePageData struct {
 	HotspotSSID   string
 	HotspotPSK    string
 	Settings      Settings
+	// NormalURL is the effective normal URL (settings override > compiled-in default).
+	// Empty when not configured.
+	NormalURL string
 }
 
 func Start(ctx context.Context, nm *networkmanager.Client, cfg ServerConfig) (LiveData, <-chan error) {
@@ -161,6 +167,11 @@ func managePage(nm *networkmanager.Client, cfg ServerConfig, mu *sync.Mutex) htt
 		settings := loadSettings(cfg.SettingsPath, cfg.DefaultSettings)
 		mu.Unlock()
 
+		normalURL := settings.NormalURL
+		if normalURL == "" {
+			normalURL = cfg.DefaultNormalURL
+		}
+
 		data := ManagePageData{
 			APMode:        apMode,
 			ConnectedSSID: connectedSSID,
@@ -168,6 +179,7 @@ func managePage(nm *networkmanager.Client, cfg ServerConfig, mu *sync.Mutex) htt
 			HotspotSSID:   cfg.HotspotSSID,
 			HotspotPSK:    cfg.HotspotPSK,
 			Settings:      settings,
+			NormalURL:     normalURL,
 		}
 		if err := htmlTemplates.ExecuteTemplate(w, "manage.html", data); err != nil {
 			log.Printf("managePage: template: %s", err)
@@ -309,6 +321,9 @@ func settingsPost(cfg ServerConfig, mu *sync.Mutex) http.HandlerFunc {
 		s := loadSettings(cfg.SettingsPath, cfg.DefaultSettings)
 		if v := r.FormValue("hostname"); v != "" {
 			s.MDNSHostname = v
+		}
+		if v := r.FormValue("normalUrl"); v != "" {
+			s.NormalURL = v
 		}
 		if v := r.FormValue("updateUrl"); v != "" {
 			s.UpdateURL = v

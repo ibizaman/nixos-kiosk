@@ -238,6 +238,28 @@ func TestURLPrefixNavigatesWhenOffPrefix(t *testing.T) {
 	}
 }
 
+func TestManagePageNeverRedirected(t *testing.T) {
+	// User navigated to /manage from the display URL — navigator must not redirect
+	// back regardless of what the target URL is.
+	for _, host := range []string{"localhost:8000", "nixos-kiosk.local"} {
+		mock := &mockClient{currentURL: "http://" + host + "/manage"}
+		ch := make(chan string, 1)
+		ch <- "http://homeassistant.local/lovelace"
+
+		cfg := Config{
+			NewClient:    func() Client { return mock },
+			PollInterval: 10 * time.Millisecond,
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+		Run(ctx, cfg, ch)
+
+		if calls := mock.getNavigateCalls(); len(calls) != 0 {
+			t.Errorf("host %s: Navigate called %d times, want 0 (on /manage)", host, len(calls))
+		}
+	}
+}
+
 func TestNoNavigationWithoutURL(t *testing.T) {
 	mock := &mockClient{}
 	ch := make(chan string)

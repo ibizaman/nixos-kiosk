@@ -3,6 +3,7 @@ package navigator
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -78,8 +79,14 @@ func Run(ctx context.Context, cfg Config, navigateChan <-chan string) {
 			currentURL, err := c.GetCurrentURL()
 			drifted := err != nil
 			if !drifted {
-				if cfg.URLPrefix != "" {
+				// Never redirect away from the management page — the user may
+				// have navigated there intentionally from the display URL.
+				if u, parseErr := url.Parse(currentURL); parseErr == nil && u.Path == "/manage" {
+					drifted = false
+				} else if cfg.URLPrefix != "" {
 					drifted = !strings.HasPrefix(currentURL, cfg.URLPrefix)
+				} else if strings.HasPrefix(targetURL, "http://localhost") {
+					drifted = !strings.HasPrefix(currentURL, "http://localhost")
 				} else {
 					drifted = currentURL != targetURL
 				}

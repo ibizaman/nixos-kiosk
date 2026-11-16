@@ -517,10 +517,11 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 
 	listenAddr := fmt.Sprintf("0.0.0.0:%d", cmd.Uint16("port"))
 	liveData, errChan := web.Start(ctx, n, web.ServerConfig{
-		Addr:         listenAddr,
-		HotspotSSID:  ssid,
-		HotspotPSK:   password,
-		SettingsPath: cmd.String("settings-path"),
+		Addr:             listenAddr,
+		HotspotSSID:      ssid,
+		HotspotPSK:       password,
+		SettingsPath:     cmd.String("settings-path"),
+		DefaultNormalURL: cmd.StringArg("URL"),
 		DefaultSettings: web.Settings{
 			MDNSHostname: cmd.String("hostname"),
 		},
