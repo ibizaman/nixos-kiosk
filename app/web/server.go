@@ -34,9 +34,11 @@ type LiveData struct {
 }
 
 type Settings struct {
-	NormalURL    string `json:"normalUrl"`
-	UpdateURL    string `json:"updateUrl"`
-	MDNSHostname string `json:"mdnsHostname"`
+	NormalURL     string `json:"normalUrl"`
+	UpdateURL     string `json:"updateUrl"`
+	MDNSHostname  string `json:"mdnsHostname"`
+	URLPrefix     string `json:"urlPrefix"`
+	NixosPassword string `json:"nixosPassword"`
 }
 
 func LoadSettings(path string, defaults Settings) Settings {
@@ -62,8 +64,9 @@ type ManagePageData struct {
 	HotspotPSK    string
 	Settings      Settings
 	// NormalURL is the effective normal URL (settings override > compiled-in default).
-	// Empty when not configured.
 	NormalURL string
+	// URLPrefix is the effective URL prefix (settings override > compiled-in flag).
+	URLPrefix string
 }
 
 func Start(ctx context.Context, nm *networkmanager.Client, cfg ServerConfig) (LiveData, <-chan error) {
@@ -171,6 +174,13 @@ func managePage(nm *networkmanager.Client, cfg ServerConfig, mu *sync.Mutex) htt
 		if normalURL == "" {
 			normalURL = cfg.DefaultNormalURL
 		}
+		urlPrefix := settings.URLPrefix
+		if urlPrefix == "" {
+			urlPrefix = cfg.DefaultSettings.URLPrefix
+		}
+		if settings.NixosPassword == "" {
+			settings.NixosPassword = cfg.DefaultSettings.NixosPassword
+		}
 
 		data := ManagePageData{
 			APMode:        apMode,
@@ -180,6 +190,7 @@ func managePage(nm *networkmanager.Client, cfg ServerConfig, mu *sync.Mutex) htt
 			HotspotPSK:    cfg.HotspotPSK,
 			Settings:      settings,
 			NormalURL:     normalURL,
+			URLPrefix:     urlPrefix,
 		}
 		if err := htmlTemplates.ExecuteTemplate(w, "manage.html", data); err != nil {
 			log.Printf("managePage: template: %s", err)
@@ -327,6 +338,13 @@ func settingsPost(cfg ServerConfig, mu *sync.Mutex) http.HandlerFunc {
 		}
 		if v := r.FormValue("updateUrl"); v != "" {
 			s.UpdateURL = v
+		}
+		// urlPrefix can be explicitly cleared (empty = no prefix restriction).
+		if _, ok := r.Form["urlPrefix"]; ok {
+			s.URLPrefix = r.FormValue("urlPrefix")
+		}
+		if v := r.FormValue("nixosPassword"); v != "" {
+			s.NixosPassword = v
 		}
 
 		if err := saveSettings(cfg.SettingsPath, s); err != nil {

@@ -523,7 +523,9 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 		SettingsPath:     cmd.String("settings-path"),
 		DefaultNormalURL: cmd.StringArg("URL"),
 		DefaultSettings: web.Settings{
-			MDNSHostname: cmd.String("hostname"),
+			MDNSHostname:  cmd.String("hostname"),
+			URLPrefix:     cmd.String("url-prefix"),
+			NixosPassword: "nixos",
 		},
 	})
 	go func() {

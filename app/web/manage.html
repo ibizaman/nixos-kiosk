@@ -282,6 +282,18 @@ button:disabled:active { transform: none; }
     <input id="updateUrl" name="updateUrl" value="{{ .Settings.UpdateURL }}"
            placeholder="github:owner/repo">
   </div>
+  <div>
+    <label for="urlPrefix">URL Prefix</label>
+    <input id="urlPrefix" name="urlPrefix" value="{{ .URLPrefix }}"
+           placeholder="https://example.com">
+    <small style="color:var(--muted);font-size:0.8rem;">Navigator only redirects when the current URL does not start with this prefix. Takes effect on next restart.</small>
+  </div>
+  <div>
+    <label for="nixosPassword">SSH Password (nixos user)</label>
+    <input id="nixosPassword" name="nixosPassword" value="{{ .Settings.NixosPassword }}"
+           placeholder="nixos">
+    <small style="color:var(--muted);font-size:0.8rem;">Applied on next reboot.</small>
+  </div>
   <button type="submit">Save Settings</button>
   <div id="settings-status" class="status-msg hidden"></div>
 </form>
