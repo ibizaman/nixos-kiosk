@@ -53,6 +53,8 @@ EOF
         kiosk.enable = true;
         kiosk.firstboot.enable = true;
 
+        boot.kernelModules = [ "mac80211_hwsim" ];
+
         # Ensure the firmware directory exists but kiosk.conf does not.
         boot.postBootCommands = ''
           mkdir -p /boot/firmware
@@ -70,6 +72,8 @@ EOF
 
         kiosk.enable = true;
         kiosk.firstboot.enable = true;
+
+        boot.kernelModules = [ "mac80211_hwsim" ];
 
         boot.postBootCommands = ''
           mkdir -p /boot/firmware
