@@ -38,6 +38,7 @@ let
     normal_url=$(parse_value normal_url)
     update_url=$(parse_value update_url)
     ssh_authorized_key=$(parse_value ssh_authorized_key)
+    nixos_password=$(parse_value nixos_password)
 
     if [ -n "$wifi_ssid" ]; then
       echo "Configuring WiFi: $wifi_ssid"
@@ -84,6 +85,11 @@ let
       chmod 644 /var/lib/nixos-kiosk/nixos-authorized-keys
     fi
 
+    if [ -n "$nixos_password" ]; then
+      echo "Setting nixos user password"
+      printf 'nixos:%s\n' "$nixos_password" | ${pkgs.shadow}/bin/chpasswd
+    fi
+
     SETTINGS=/var/lib/nixos-kiosk/settings.json
     existing='{}'
     if [ -f "$SETTINGS" ]; then
@@ -94,9 +100,11 @@ let
       --arg hn "$hostname" \
       --arg nu "$normal_url" \
       --arg uu "$update_url" \
+      --arg np "$nixos_password" \
       '(if $hn != "" then .mdnsHostname = $hn else . end) |
        (if $nu != "" then .normalUrl = $nu else . end) |
-       (if $uu != "" then .updateUrl = $uu else . end)')
+       (if $uu != "" then .updateUrl = $uu else . end) |
+       (if $np != "" then .nixosPassword = $np else . end)')
 
     printf '%s\n' "$new_settings" > "$SETTINGS"
     chown kiosk-controller:kiosk-controller "$SETTINGS" 2>/dev/null || true
