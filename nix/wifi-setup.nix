@@ -476,6 +476,29 @@ in
           extraConfig = "return 204;";
         };
 
+        # Windows NCSI probes. Without these Windows marks the connection as
+        # "No Internet Access" and may disconnect from the AP.
+        locations."/ncsi.txt" = {
+          extraConfig = ''
+            default_type text/plain;
+            return 200 "Microsoft NCSI";
+          '';
+        };
+        locations."/connecttest.txt" = {
+          extraConfig = ''
+            default_type text/plain;
+            return 200 "Microsoft Connect Test";
+          '';
+        };
+
+        # Firefox captive-portal probe.
+        locations."/success.txt" = {
+          extraConfig = ''
+            default_type text/plain;
+            return 200 "success";
+          '';
+        };
+
         locations."/" = {
           proxyPass = "http://127.0.0.1:${toString cfg.setupPort}";
           extraConfig = ''

@@ -303,8 +303,7 @@ button:disabled:active { transform: none; }
 </div><!-- .container -->
 </body>
 
-{{ define "strength-bars" }}
-{{ end }}
+{{ define "strength-bars" }}<span class="strength-bar{{ if ge . 1 }} active{{ end }}" style="height:4px"></span><span class="strength-bar{{ if ge . 25 }} active{{ end }}" style="height:7px"></span><span class="strength-bar{{ if ge . 50 }} active{{ end }}" style="height:10px"></span><span class="strength-bar{{ if ge . 75 }} active{{ end }}" style="height:13px"></span>{{ end }}
 
 <script>
 async function submitForm(formId, url, statusId, button) {
