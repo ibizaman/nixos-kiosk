@@ -491,12 +491,20 @@ func startDaemon(ctx context.Context, cmd *cli.Command) error {
 	navigateChan := make(chan string)
 
 	port := cmd.Uint16("chromium-port")
+	settingsPath := cmd.String("settings-path")
+	flagURLPrefix := cmd.String("url-prefix")
 	go navigator.Run(ctx, navigator.Config{
 		NewClient: func() navigator.Client {
 			c := chromium.NewClient("127.0.0.1", port)
 			return &c
 		},
-		URLPrefix: cmd.String("url-prefix"),
+		GetURLPrefix: func() string {
+			s := web.LoadSettings(settingsPath, web.Settings{})
+			if s.URLPrefix != "" {
+				return s.URLPrefix
+			}
+			return flagURLPrefix
+		},
 	}, navigateChan)
 
 	n, err := networkmanager.NewClient()

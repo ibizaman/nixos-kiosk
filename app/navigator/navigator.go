@@ -26,6 +26,17 @@ type Config struct {
 	// start with this prefix. Useful for multi-page sites such as a Home
 	// Assistant dashboard where the path changes as the user navigates.
 	URLPrefix string
+	// GetURLPrefix, if non-nil, is called on each poll cycle and overrides
+	// URLPrefix. Use this to read the prefix from a live settings source so
+	// changes take effect without restarting the daemon.
+	GetURLPrefix func() string
+}
+
+func (c Config) urlPrefix() string {
+	if c.GetURLPrefix != nil {
+		return c.GetURLPrefix()
+	}
+	return c.URLPrefix
 }
 
 func (c Config) pollInterval() time.Duration {
@@ -83,8 +94,8 @@ func Run(ctx context.Context, cfg Config, navigateChan <-chan string) {
 				// have navigated there intentionally from the display URL.
 				if u, parseErr := url.Parse(currentURL); parseErr == nil && u.Path == "/manage" {
 					drifted = false
-				} else if cfg.URLPrefix != "" {
-					drifted = !strings.HasPrefix(currentURL, cfg.URLPrefix)
+				} else if p := cfg.urlPrefix(); p != "" {
+					drifted = !strings.HasPrefix(currentURL, p)
 				} else if strings.HasPrefix(targetURL, "http://localhost") {
 					drifted = !strings.HasPrefix(currentURL, "http://localhost")
 				} else {
