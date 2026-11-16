@@ -164,6 +164,12 @@ in
     # Enables touchscreen
     services.libinput.enable = true;
 
+    # Prevent the touchscreen from emitting pointer events (which would show a
+    # cursor). Touch events via wl_touch are unaffected.
+    services.udev.extraRules = ''
+      ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{ID_INPUT_MOUSE}="0", ENV{ID_INPUT_POINTER}="0"
+    '';
+
     systemd.tmpfiles.rules = [
       "d /var/lib/nixos-kiosk 0750 kiosk-controller kiosk-controller -"
     ] ++ lib.optional cfg.persistBrowserSession
