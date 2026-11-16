@@ -37,6 +37,7 @@ hostname=test-kiosk
 normal_url=http://test.example.com/display
 update_url=http://update.example.com
 ssh_authorized_key=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyForNixOSKioskTest testkey
+nixos_password=testpw123
 EOF
         '';
       };
@@ -131,6 +132,31 @@ EOF
         assert key == "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyForNixOSKioskTest testkey", \
             f"authorized key wrong: {key!r}"
 
+
+    with subtest("with_config: nixos_password persisted in settings.json"):
+        with_config.wait_for_unit("kiosk-firstboot.service")
+        s = with_config.succeed("cat /var/lib/nixos-kiosk/settings.json")
+        import json
+        settings_pw = json.loads(s)
+        assert settings_pw.get("nixosPassword") == "testpw123", \
+            f"nixosPassword wrong in settings.json: {settings_pw}"
+
+    with subtest("with_config: kiosk-apply-nixos-password applies password"):
+        with_config.wait_for_unit("kiosk-apply-nixos-password.service")
+        result = with_config.succeed(
+            "systemctl show -p Result kiosk-apply-nixos-password.service"
+        ).strip()
+        assert result == "Result=success", f"apply-nixos-password failed: {result}"
+        # Verify the shadow entry is not locked/empty.
+        shadow = with_config.succeed("getent shadow nixos | cut -d: -f2").strip()
+        assert shadow not in ("", "!", "*"), f"nixos password not set in shadow: {shadow!r}"
+
+    with subtest("no_config: kiosk-apply-nixos-password is a no-op when settings.json absent"):
+        no_config.wait_for_unit("kiosk-apply-nixos-password.service")
+        result = no_config.succeed(
+            "systemctl show -p Result kiosk-apply-nixos-password.service"
+        ).strip()
+        assert result == "Result=success", f"apply-nixos-password failed on no_config: {result}"
 
     with subtest("with_config: kiosk-apply-hostname applies state file on subsequent boots"):
         # kiosk-apply-hostname runs before NetworkManager (early boot), before firstboot

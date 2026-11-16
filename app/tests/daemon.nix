@@ -104,6 +104,29 @@ pkgs.testers.runNixOSTest {
           if "cursor: pointer" in body or "cursor: not-allowed" in body:
               raise Exception("manage.html must not set cursor shapes that would show a hand cursor")
 
+      with subtest("manage page does not expose password in HTML"):
+          body = kiosk.succeed(
+              "curl -s http://localhost:${toString cfg.config.kiosk.setupPort}/manage"
+          )
+          # The nixos default password must never appear in the HTML response.
+          if "nixos" in body and 'name="nixosPassword"' in body:
+              import re
+              # Check that the input has no value= attribute with the password.
+              if re.search(r'name="nixosPassword"[^>]*value=', body) or \
+                 re.search(r'value="nixos"[^>]*name="nixosPassword"', body):
+                  raise Exception("nixosPassword value rendered in manage page HTML")
+
+      with subtest("settings.json stays 0640 after UI save"):
+          kiosk.succeed(
+              "curl -s -X POST http://localhost:${toString cfg.config.kiosk.setupPort}/manage/settings"
+              " -d 'nixosPassword=testpw'"
+          )
+          mode = kiosk.succeed(
+              "stat -c %a /var/lib/nixos-kiosk/settings.json"
+          ).strip()
+          if mode != "640":
+              raise Exception(f"settings.json mode is {mode!r}, want 640")
+
       with subtest("self-signed TLS cert is generated before nginx starts"):
           kiosk.wait_for_unit("kiosk-gen-tls-cert.service")
           kiosk.succeed("test -f /var/lib/nixos-kiosk/captive-portal.crt")
