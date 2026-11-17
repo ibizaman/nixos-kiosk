@@ -28,6 +28,37 @@ pkgs.testers.runNixOSTest {
           pkgs.jq
         ];
       };
+
+    # Node where kiosk.conf sets values A on first boot; a UI POST then
+    # overrides them to values B.  settings.json must end up with values B.
+    conf_then_ui =
+      { ... }:
+      {
+        imports = [
+          ../../nix/wifi-setup.nix
+          ../../nix/firstboot.nix
+        ];
+
+        kiosk.enable = true;
+        kiosk.firstboot.enable = true;
+
+        boot.kernelModules = [ "mac80211_hwsim" ];
+
+        environment.systemPackages = [
+          pkgs.curl
+          pkgs.jq
+        ];
+
+        boot.postBootCommands = ''
+          mkdir -p /boot/firmware
+          cat > /boot/firmware/kiosk.conf << 'EOF'
+hostname=conf-kiosk
+normal_url=http://conf.example.com/display
+url_prefix=http://conf.example.com
+update_url=http://cu.example.com
+EOF
+        '';
+      };
   };
 
   testScript = ''
@@ -36,7 +67,10 @@ pkgs.testers.runNixOSTest {
     PORT = 8000
 
     ui_all.start()
+    conf_then_ui.start()
+
     ui_all.wait_for_unit("nixos-kiosk.service")
+    conf_then_ui.wait_for_unit("multi-user.target")
 
     with subtest("ui_all: POST all non-password settings updates settings.json"):
         ui_all.succeed(
@@ -80,5 +114,30 @@ pkgs.testers.runNixOSTest {
         settings2 = json.loads(s2)
         assert "nixosPassword" not in settings2, \
             f"nixosPassword not cleared from settings.json: {settings2}"
+
+    with subtest("conf_then_ui: firstboot writes conf values A to settings.json"):
+        conf_then_ui.wait_for_unit("kiosk-firstboot.service")
+        s = conf_then_ui.succeed("cat /var/lib/nixos-kiosk/settings.json")
+        settings_a = json.loads(s)
+        assert settings_a.get("mdnsHostname") == "conf-kiosk", f"conf mdnsHostname wrong: {settings_a}"
+        assert settings_a.get("normalUrl") == "http://conf.example.com/display", f"conf normalUrl wrong: {settings_a}"
+        assert settings_a.get("urlPrefix") == "http://conf.example.com", f"conf urlPrefix wrong: {settings_a}"
+        assert settings_a.get("updateUrl") == "http://cu.example.com", f"conf updateUrl wrong: {settings_a}"
+
+    with subtest("conf_then_ui: UI POST overrides conf values with values B"):
+        conf_then_ui.wait_for_unit("nixos-kiosk.service")
+        conf_then_ui.succeed(
+            f"curl -s -f -X POST http://localhost:{PORT}/manage/settings"
+            " -d 'hostname=ui-kiosk'"
+            " -d 'normalUrl=http://ui.example.com/display'"
+            " -d 'urlPrefix=http://ui.example.com'"
+            " -d 'updateUrl=http://uu.example.com'"
+        )
+        s = conf_then_ui.succeed("cat /var/lib/nixos-kiosk/settings.json")
+        settings_b = json.loads(s)
+        assert settings_b.get("mdnsHostname") == "ui-kiosk", f"ui mdnsHostname wrong: {settings_b}"
+        assert settings_b.get("normalUrl") == "http://ui.example.com/display", f"ui normalUrl wrong: {settings_b}"
+        assert settings_b.get("urlPrefix") == "http://ui.example.com", f"ui urlPrefix wrong: {settings_b}"
+        assert settings_b.get("updateUrl") == "http://uu.example.com", f"ui updateUrl wrong: {settings_b}"
   '';
 }
