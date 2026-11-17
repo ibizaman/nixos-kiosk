@@ -35,6 +35,7 @@ wifi_ssid=TestNetwork
 wifi_password=s3cr3tpw
 hostname=test-kiosk
 normal_url=http://test.example.com/display
+url_prefix=http://test.example.com
 update_url=http://update.example.com
 ssh_authorized_key=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyForNixOSKioskTest testkey
 nixos_password=testpw123
@@ -163,6 +164,7 @@ EOF
         settings = json.loads(s)
         assert settings.get("mdnsHostname") == "test-kiosk", f"mdnsHostname wrong: {settings}"
         assert settings.get("normalUrl") == "http://test.example.com/display", f"normalUrl wrong: {settings}"
+        assert settings.get("urlPrefix") == "http://test.example.com", f"urlPrefix wrong: {settings}"
         assert settings.get("updateUrl") == "http://update.example.com", f"updateUrl wrong: {settings}"
 
     with subtest("with_config: hostname state file written for persistence across reboots"):
