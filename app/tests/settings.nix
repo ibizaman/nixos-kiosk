@@ -29,6 +29,28 @@ pkgs.testers.runNixOSTest {
         ];
       };
 
+    # Node where kiosk.normalURL and kiosk.urlPrefix NixOS options are set at
+    # build time.  A UI POST must override both in settings.json, and the manage
+    # page must render the settings.json values (not the NixOS defaults).
+    nixos_option_vs_settings =
+      { ... }:
+      {
+        imports = [
+          ../../nix/wifi-setup.nix
+        ];
+
+        kiosk.enable = true;
+        kiosk.normalURL = "http://nixos.example.com/display";
+        kiosk.urlPrefix = "http://nixos.example.com";
+
+        boot.kernelModules = [ "mac80211_hwsim" ];
+
+        environment.systemPackages = [
+          pkgs.curl
+          pkgs.jq
+        ];
+      };
+
     # Node where kiosk.conf sets values A on first boot; a UI POST then
     # overrides them to values B.  settings.json must end up with values B.
     conf_then_ui =
@@ -68,9 +90,11 @@ EOF
 
     ui_all.start()
     conf_then_ui.start()
+    nixos_option_vs_settings.start()
 
     ui_all.wait_for_unit("nixos-kiosk.service")
     conf_then_ui.wait_for_unit("multi-user.target")
+    nixos_option_vs_settings.wait_for_unit("nixos-kiosk.service")
 
     with subtest("ui_all: POST all non-password settings updates settings.json"):
         ui_all.succeed(
@@ -139,5 +163,30 @@ EOF
         assert settings_b.get("normalUrl") == "http://ui.example.com/display", f"ui normalUrl wrong: {settings_b}"
         assert settings_b.get("urlPrefix") == "http://ui.example.com", f"ui urlPrefix wrong: {settings_b}"
         assert settings_b.get("updateUrl") == "http://uu.example.com", f"ui updateUrl wrong: {settings_b}"
+
+    with subtest("nixos_option_vs_settings: manage page shows NixOS option values before any POST"):
+        body = nixos_option_vs_settings.succeed(f"curl -s http://localhost:{PORT}/manage")
+        assert "http://nixos.example.com/display" in body, \
+            "NixOS normalURL not shown on manage page before override"
+
+    with subtest("nixos_option_vs_settings: UI POST overrides NixOS option values in settings.json"):
+        nixos_option_vs_settings.succeed(
+            f"curl -s -f -X POST http://localhost:{PORT}/manage/settings"
+            " -d 'normalUrl=http://ui2.example.com/display'"
+            " -d 'urlPrefix=http://ui2.example.com'"
+        )
+        s = nixos_option_vs_settings.succeed("cat /var/lib/nixos-kiosk/settings.json")
+        settings = json.loads(s)
+        assert settings.get("normalUrl") == "http://ui2.example.com/display", \
+            f"normalUrl not overridden by UI: {settings}"
+        assert settings.get("urlPrefix") == "http://ui2.example.com", \
+            f"urlPrefix not overridden by UI: {settings}"
+
+    with subtest("nixos_option_vs_settings: manage page renders settings.json values after POST"):
+        body = nixos_option_vs_settings.succeed(f"curl -s http://localhost:{PORT}/manage")
+        assert "http://ui2.example.com/display" in body, \
+            "settings.json normalUrl not shown on manage page after override"
+        assert "http://nixos.example.com/display" not in body, \
+            "NixOS normalURL still shown on manage page after settings.json override"
   '';
 }
